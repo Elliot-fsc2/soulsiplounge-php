@@ -1,3 +1,4 @@
+import { OPENING_MINUTES, CLOSING_MINUTES, MAINTENANCE_INTERVAL } from '@/lib/constants';
 import type { Booking } from '@/types/domain';
 
 export function timeToMinutes(time: string): number {
@@ -47,16 +48,14 @@ export function generateAvailableSlots(
 
   if (dateObj < today) return [];
 
-  const openMinutes = 10 * 60;
-  const closeMinutes = 22 * 60;
   const durationMinutes = parseFloat(duration) * 60;
-  const lastStart = closeMinutes - durationMinutes - 5;
+  const lastStart = CLOSING_MINUTES - durationMinutes - MAINTENANCE_INTERVAL;
   const available: string[] = [];
 
   const now = new Date();
   const isToday = dateObj.getTime() === today.getTime();
 
-  for (let minutes = openMinutes; minutes <= lastStart; minutes += 5) {
+  for (let minutes = OPENING_MINUTES; minutes <= lastStart; minutes += MAINTENANCE_INTERVAL) {
     if (isToday) {
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
       if (minutes <= nowMinutes) continue;

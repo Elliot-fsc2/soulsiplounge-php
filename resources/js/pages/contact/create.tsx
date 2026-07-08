@@ -29,7 +29,7 @@ export default function ContactCreate() {
     const address = settings?.address || 'My Ville Co Living 24 Ortigas Avenue Extension Barangay Rosario Pasig City 2nd floor';
     const phoneNum = settings?.phone || '0917 716 8618';
     const emailAddr = settings?.email || 'soulsipslounge@gmail.com';
-    const hours = settings?.hours || 'Daily: 11:00 AM – 11:00 PM';
+    const hours = settings?.hours || 'Daily: 10:00 AM – 10:00 PM';
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
