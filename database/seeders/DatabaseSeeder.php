@@ -140,17 +140,9 @@ class DatabaseSeeder extends Seeder
         ]);
 
         BankAccount::factory()->create([
-            'bank_name' => 'BPI',
-            'account_name' => 'Soul Sips Lounge',
-            'account_number' => '1234-5678-90',
-            'qr_code_url' => null,
-            'is_active' => true,
-        ]);
-
-        BankAccount::factory()->create([
-            'bank_name' => 'BDO',
-            'account_name' => 'Soul Sips Lounge',
-            'account_number' => '9876-5432-10',
+            'bank_name' => 'Chinabank',
+            'account_name' => 'HERNANDEZ, JULIANNA IGLESIAS',
+            'account_number' => '1321 0200 0629',
             'qr_code_url' => null,
             'is_active' => true,
         ]);
