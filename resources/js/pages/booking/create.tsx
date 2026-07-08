@@ -7,14 +7,12 @@ import { formatCurrency, formatTime, getTimeRangeDisplay } from '@/lib/format';
 import { computePerPersonRate } from '@/lib/pricing';
 import { applyVoucher } from '@/lib/voucher';
 import { generateAvailableSlots, isSlotAvailable, timeToMinutes } from '@/lib/availability';
+import { CLOSING_MINUTES, MAINTENANCE_INTERVAL } from '@/lib/constants';
 import { todayStr, minutesToTime } from '@/lib/time';
 import type { Room, Booking, Duration, Voucher } from '@/types/domain';
 import { CafeField, CafeInput, CafeTextarea, ActionButton, SummaryRow } from '@/components/soul-sips-ui';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-
-const CLOSING_MINUTES = 22 * 60;
-const MAINTENANCE_INTERVAL = 5;
 
 interface Props {
     rooms: Room[];
