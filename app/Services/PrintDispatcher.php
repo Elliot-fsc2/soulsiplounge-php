@@ -39,6 +39,8 @@ class PrintDispatcher
                 'guest_count' => $invoice->guest_count,
                 'subtotal' => $invoice->subtotal,
                 'total' => $invoice->total,
+                'amount_tendered' => $invoice->amount_tendered,
+                'change' => $invoice->change,
                 'payment_method' => $invoice->payment_method,
                 'items' => $invoice->items->toArray(),
             ]);

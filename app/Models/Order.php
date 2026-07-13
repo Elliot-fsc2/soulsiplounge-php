@@ -19,6 +19,8 @@ class Order extends Model
         'guest_count',
         'subtotal',
         'total',
+        'amount_tendered',
+        'change',
         'status',
         'payment_method',
         'payment_status',
@@ -50,6 +52,8 @@ class Order extends Model
         return [
             'subtotal' => 'integer',
             'total' => 'integer',
+            'amount_tendered' => 'integer',
+            'change' => 'integer',
             'guest_count' => 'integer',
             'status' => OrderStatus::class,
         ];
