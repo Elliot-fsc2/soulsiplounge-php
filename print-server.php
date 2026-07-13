@@ -96,6 +96,16 @@ $http = new HttpServer(function (ServerRequestInterface $request) use ($printerP
             $printer->text('Payment: '.strtoupper($body['payment_method'])."\n");
         }
 
+        if (! empty($body['amount_tendered'])) {
+            $tendered = number_format($body['amount_tendered'] / 100, 2);
+            $printer->text("Cash: {$tendered}\n");
+        }
+
+        if (isset($body['change'])) {
+            $change = number_format($body['change'] / 100, 2);
+            $printer->text("Change: {$change}\n");
+        }
+
         // Footer
         $printer->feed(2);
         $printer->setJustification(Printer::JUSTIFY_CENTER);

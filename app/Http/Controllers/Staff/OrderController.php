@@ -36,6 +36,7 @@ class OrderController
             'items.*.product_id' => 'required|string|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'payment_method' => 'nullable|string|in:cash,gcash,card,bank_transfer',
+            'amount_tendered' => 'nullable|integer|min:0',
             'booking_id' => 'nullable|string|exists:bookings,id',
             'room_id' => 'nullable|string|exists:rooms,id',
             'guest_count' => 'nullable|integer|min:1',
@@ -53,10 +54,14 @@ class OrderController
             );
 
             if ($paymentMethod = $validated['payment_method'] ?? null) {
+                $amountTendered = $validated['amount_tendered'] ?? null;
+
                 $order->update([
                     'payment_method' => $paymentMethod,
                     'payment_status' => 'paid',
                     'status' => 'completed',
+                    'amount_tendered' => $amountTendered,
+                    'change' => $amountTendered !== null ? max(0, $amountTendered - $order->total) : null,
                 ]);
             }
 
@@ -94,6 +99,7 @@ class OrderController
     {
         $validated = $request->validate([
             'payment_method' => 'required|string|in:cash,gcash,card,bank_transfer',
+            'amount_tendered' => 'nullable|integer|min:0',
         ]);
 
         if ($order->payment_status === 'paid') {
@@ -102,10 +108,14 @@ class OrderController
             ]);
         }
 
+        $amountTendered = $validated['amount_tendered'] ?? null;
+
         $order->update([
             'payment_method' => $validated['payment_method'],
             'payment_status' => 'paid',
             'status' => 'completed',
+            'amount_tendered' => $amountTendered,
+            'change' => $amountTendered !== null ? max(0, $amountTendered - $order->total) : null,
         ]);
 
         $this->printDispatcher->send(

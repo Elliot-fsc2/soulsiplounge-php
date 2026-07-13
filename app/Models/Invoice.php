@@ -21,6 +21,8 @@ class Invoice extends Model
         'guest_count',
         'subtotal',
         'total',
+        'amount_tendered',
+        'change',
         'payment_method',
         'payment_status',
         'notes',
@@ -47,6 +49,8 @@ class Invoice extends Model
         return [
             'subtotal' => 'integer',
             'total' => 'integer',
+            'amount_tendered' => 'integer',
+            'change' => 'integer',
             'guest_count' => 'integer',
             'printed_at' => 'datetime',
         ];

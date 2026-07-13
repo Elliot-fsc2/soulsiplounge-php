@@ -81,6 +81,16 @@ class PrinterService
                 $printer->text('Payment: '.strtoupper($order->payment_method)."\n");
             }
 
+            if ($order->amount_tendered !== null) {
+                $tendered = number_format($order->amount_tendered / 100, 2);
+                $printer->text("Cash: {$tendered}\n");
+            }
+
+            if ($order->change !== null) {
+                $change = number_format($order->change / 100, 2);
+                $printer->text("Change: {$change}\n");
+            }
+
             $printer->feed(2);
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->text("Thank you!\n");

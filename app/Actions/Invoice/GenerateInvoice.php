@@ -21,6 +21,8 @@ class GenerateInvoice
             'guest_count' => $order->guest_count,
             'subtotal' => $order->subtotal,
             'total' => $order->total,
+            'amount_tendered' => $order->amount_tendered,
+            'change' => $order->change,
             'payment_method' => $order->payment_method,
             'payment_status' => $order->payment_status,
             'notes' => $order->notes,
