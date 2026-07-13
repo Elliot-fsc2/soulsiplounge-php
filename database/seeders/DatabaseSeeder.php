@@ -28,7 +28,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'Staff',
             'email' => 'staff@example.com',
-            'password'=> bcrypt('staff123'),
+            'password' => bcrypt('staff123'),
             'role' => UserRole::Staff,
         ]);
 
@@ -148,5 +148,7 @@ class DatabaseSeeder extends Seeder
             'qr_code_url' => null,
             'is_active' => true,
         ]);
+
+        $this->call(PosSeeder::class);
     }
 }
