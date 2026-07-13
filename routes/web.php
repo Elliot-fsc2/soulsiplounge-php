@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Public;
+use App\Http\Controllers\Staff;
 use App\Models\BankAccount;
 use App\Models\Booking;
 use App\Models\Contact;
@@ -28,7 +29,7 @@ Route::prefix('contact')->name('contact.')->group(function () {
     Route::post('/', [Public\ContactController::class, 'store'])->name('store');
 });
 
-// Staff dashboard — visible to both staff and admin
+// Staff dashboard & POS — visible to both staff and admin
 Route::middleware(['auth', 'role:admin,staff'])->prefix('staff')->name('staff.')->group(function () {
     Route::get('/', function () {
         $pendingPayments = Payment::with('booking')
@@ -48,6 +49,14 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('staff')->name('staff.')
             'todayBookings' => $todayBookings,
         ]);
     })->name('dashboard');
+
+    Route::get('/pos', [Staff\PosController::class, 'index'])->name('pos');
+    Route::post('/orders', [Staff\OrderController::class, 'store'])->name('orders.store');
+    Route::get('/orders', [Staff\OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [Staff\OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/cancel', [Staff\OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::post('/orders/{order}/pay', [Staff\OrderController::class, 'pay'])->name('orders.pay');
+    Route::get('/orders/{order}/receipt', [Staff\OrderController::class, 'receipt'])->name('orders.receipt');
 });
 
 // Admin-only routes (Bookings, Contacts, Rooms, Vouchers, Settings, Analytics)
@@ -118,6 +127,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('bank-accounts', Admin\BankAccountController::class)->except(['create', 'edit', 'show', 'index']);
     Route::resource('users', Admin\UserController::class)->except(['create', 'edit', 'show', 'index']);
     Route::put('settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
+
+    Route::get('/inventory', [Admin\InventoryController::class, 'index'])->name('inventory');
+    Route::post('/inventory/{inventoryItem}/add-stock', [Admin\InventoryController::class, 'addStock'])->name('inventory.add-stock');
+    Route::post('/inventory/{inventoryItem}/adjust', [Admin\InventoryController::class, 'adjust'])->name('inventory.adjust');
+    Route::post('/inventory/weekly-restock', [Admin\InventoryController::class, 'weeklyRestock'])->name('inventory.weekly-restock');
+
+    Route::get('/products', [Admin\ProductController::class, 'index'])->name('products');
+    Route::resource('products', Admin\ProductController::class)->except(['create', 'edit', 'show', 'index']);
 });
 
 // Admin + Staff routes (Payments page + actions)
