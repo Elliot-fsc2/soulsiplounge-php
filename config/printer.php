@@ -8,6 +8,5 @@ return [
     'paper_width' => (int) env('PRINTER_PAPER_WIDTH', 58),
     'print_kitchen_chit' => (bool) env('PRINTER_PRINT_KITCHEN_CHIT', true),
 
-    'print_server_url' => env('PRINT_SERVER_URL'),
-    'print_server_secret' => env('PRINT_SERVER_SECRET'),
+    
 ];

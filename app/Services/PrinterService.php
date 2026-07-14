@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use Mike42\Escpos\PrintConnectors\FilePrintConnector;
 use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
 use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Mike42\Escpos\Printer;
@@ -91,8 +92,13 @@ class PrinterService
                 $printer->text("Change: {$change}\n");
             }
 
-            $printer->feed(2);
+            $printer->feed();
             $printer->setJustification(Printer::JUSTIFY_CENTER);
+            $printer->text(str_repeat('-', $this->paperWidth === 58 ? 32 : 42)."\n");
+            $printer->text("THIS IS NOT AN OFFICIAL RECEIPT\n");
+            $printer->text(str_repeat('-', $this->paperWidth === 58 ? 32 : 42)."\n");
+            $printer->feed();
+
             $printer->text("Thank you!\n");
             $printer->text("Visit again :)\n");
             $printer->feed(3);
@@ -192,6 +198,8 @@ class PrinterService
     {
         return match ($this->interface) {
             'windows' => new WindowsPrintConnector($this->port),
+            // 'bluetooth' => new FilePrintConnector($this->port),
+            'bluetooth' => new WindowsPrintConnector($this->port),
             'network' => new NetworkPrintConnector($this->port),
             default => throw new \InvalidArgumentException("Unknown printer interface: {$this->interface}"),
         };

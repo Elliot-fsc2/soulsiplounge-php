@@ -53,6 +53,12 @@ class OrderController
                 notes: $validated['notes'] ?? null,
             );
 
+            $order->load('items');
+
+            if (config('printer.print_kitchen_chit') && $order->items->contains(fn ($item) => $item->item_type === 'product')) {
+                $this->printerService->printKitchenChit($order);
+            }
+
             if ($paymentMethod = $validated['payment_method'] ?? null) {
                 $amountTendered = $validated['amount_tendered'] ?? null;
 
