@@ -29,7 +29,11 @@ export function usePrinter() {
     if (!('serial' in navigator)) throw new Error('Web Serial not supported.');
     setStatus('connecting');
     try {
-      const port = await navigator.serial.requestPort();
+      const port = await navigator.serial.requestPort({
+        allowedBluetoothServiceClassIds: [
+          '00001200-0000-1000-8000-00805f9b34fb',
+        ],
+      });
       savedPort = port;
       setStatus('connected');
     } catch {
