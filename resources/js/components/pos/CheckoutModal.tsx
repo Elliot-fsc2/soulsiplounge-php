@@ -35,7 +35,7 @@ export default function CheckoutModal({ items, roomId, guestCount, bookingId, on
         quantity: item.quantity,
       })),
       payment_method: paymentMethod,
-      amount_tendered: paymentMethod === 'cash' ? Math.round(tendered * 100) : null,
+      amount_tendered: paymentMethod === 'cash' ? Math.round(tendered) : null,
       room_id: roomId,
       guest_count: guestCount > 0 ? guestCount : null,
       booking_id: bookingId,

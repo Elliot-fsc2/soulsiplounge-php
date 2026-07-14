@@ -1,22 +1,12 @@
 const COLUMNS = 32;
 const encoder = new TextEncoder();
 
-function center(text: string): string {
-  const spaces = Math.max(0, COLUMNS - text.length);
-  const leftPad = Math.floor(spaces / 2);
-  return ' '.repeat(leftPad) + text;
-}
-
 function leftRight(left: string, right: string): string {
   const content = left + right;
   if (content.length >= COLUMNS) {
     return left.substring(0, COLUMNS - right.length - 1) + ' ' + right;
   }
   return left + ' '.repeat(COLUMNS - content.length) + right;
-}
-
-function line(text = ''): string {
-  return text + '\n';
 }
 
 function separator(): string {
@@ -83,7 +73,7 @@ export interface PrintData {
 function formatAmount(n: number): string {
   return new Intl.NumberFormat('en-PH', {
     style: 'decimal',
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(n);
 }
@@ -138,22 +128,23 @@ export function buildReceipt(invoice: PrintInvoiceData): Uint8Array {
 
   const divider = separator().trimEnd();
   const receiptStr = lines.join('\n') + '\n';
-  const footer = center(divider) + '\n' + center('THIS IS NOT AN OFFICIAL RECEIPT') + '\n' + center(divider) + '\n';
-  const closing = center('Thank you!') + '\n' + center('Visit again :)') + '\n';
 
   return concat(
     INIT,
     CENTER,
     DOUBLE_HEIGHT,
-    textBytes(center('SOULSIPS LOUNGE') + '\n'),
+    textBytes('SOULSIPS LOUNGE\n'),
     NORMAL,
-    textBytes(center('An elevated social lounge') + '\n'),
+    textBytes('An elevated social lounge\n'),
     LF,
     LEFT,
     textBytes(receiptStr),
     CENTER,
-    textBytes(footer),
-    textBytes(closing),
+    textBytes(divider + '\n'),
+    textBytes('THIS IS NOT AN OFFICIAL RECEIPT\n'),
+    textBytes(divider + '\n'),
+    textBytes('Thank you!\n'),
+    textBytes('Visit again :)\n'),
     FEED(3),
     CUT,
   );
@@ -193,9 +184,9 @@ export function buildKitchenChit(data: KitchenChitData): Uint8Array {
     INIT,
     CENTER,
     DOUBLE_HEIGHT,
-    textBytes(center('KITCHEN ORDER') + '\n'),
+    textBytes('KITCHEN ORDER\n'),
     NORMAL,
-    textBytes(center(data.order_number) + '\n'),
+    textBytes(data.order_number + '\n'),
     LF,
     LEFT,
     textBytes(lines.join('\n') + '\n'),
@@ -209,12 +200,12 @@ export function buildTestPage(): Uint8Array {
     INIT,
     CENTER,
     DOUBLE_HEIGHT,
-    textBytes(center('SOULSIPS LOUNGE') + '\n'),
+    textBytes('SOULSIPS LOUNGE\n'),
     NORMAL,
-    textBytes(center('Printer Test Page') + '\n'),
+    textBytes('Printer Test Page\n'),
     LF,
-    textBytes(center('If you can read this,') + '\n'),
-    textBytes(center('your printer is working!') + '\n'),
+    textBytes('If you can read this,\n'),
+    textBytes('your printer is working!\n'),
     FEED(3),
     CUT,
   );
