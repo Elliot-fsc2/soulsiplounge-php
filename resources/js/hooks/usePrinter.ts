@@ -7,19 +7,7 @@ export type ConnectionType = 'serial' | 'usb' | null;
 const BAUDRATE = 9600;
 
 let savedPort: SerialPort | null = null;
-interface UsbEndpoint {
-  endpointNumber: number;
-  direction: 'in' | 'out';
-  type: 'bulk' | 'interrupt' | 'isochronous';
-}
-interface UsbInterface {
-  alternate: { endpoints: UsbEndpoint[] };
-}
-interface UsbConfiguration {
-  interfaces: UsbInterface[];
-}
 interface USBDevice {
-  configuration?: UsbConfiguration;
   open(): Promise<void>;
   selectConfiguration(n: number): Promise<void>;
   claimInterface(n: number): Promise<void>;
@@ -83,14 +71,11 @@ export function usePrinter() {
       const device = await usb().requestDevice({ filters: [] });
       await device.open();
       await device.selectConfiguration(1);
-      const iface = device.configuration?.interfaces?.[0];
-      if (iface) {
-        const endpoints = iface.alternate?.endpoints ?? [];
-        console.log('USB endpoints:', JSON.stringify(endpoints));
+      let claimed = false;
+      for (const n of [0, 1, 2]) {
+        try { await device.claimInterface(n); claimed = true; break; } catch { /* try next */ }
       }
-      try { await device.claimInterface(0); } catch {
-        await device.claimInterface(1);
-      }
+      if (!claimed) throw new Error('Could not claim any USB interface');
       usbDevice = device;
       savedPort = null;
       setConnectionType('usb');
@@ -118,19 +103,13 @@ export function usePrinter() {
   async function print(data: Uint8Array): Promise<void> {
     if (connectionType === 'usb' && usbDevice) {
       try {
-        const iface = usbDevice.configuration?.interfaces?.[0];
-        const endpoints = iface?.alternate?.endpoints ?? [];
-        const bulkOut = endpoints.find(
-          (ep: UsbEndpoint) => ep.direction === 'out' && ep.type === 'bulk',
-        );
-        const endpointNumber = bulkOut?.endpointNumber ?? 2;
-        await usbDevice.transferOut(endpointNumber, data);
+        await usbDevice.transferOut(2, data);
+        return;
       } catch (err) {
         setStatus('disconnected');
         toast.error(err instanceof Error ? err.message : 'USB print failed');
         throw err;
       }
-      return;
     }
 
     if (!savedPort) throw new Error('No printer paired.');
