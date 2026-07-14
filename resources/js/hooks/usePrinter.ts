@@ -83,7 +83,14 @@ export function usePrinter() {
       const device = await usb().requestDevice({ filters: [] });
       await device.open();
       await device.selectConfiguration(1);
-      await device.claimInterface(0);
+      const iface = device.configuration?.interfaces?.[0];
+      if (iface) {
+        const endpoints = iface.alternate?.endpoints ?? [];
+        console.log('USB endpoints:', JSON.stringify(endpoints));
+      }
+      try { await device.claimInterface(0); } catch {
+        await device.claimInterface(1);
+      }
       usbDevice = device;
       savedPort = null;
       setConnectionType('usb');
@@ -91,11 +98,7 @@ export function usePrinter() {
     } catch (err) {
       setStatus('disconnected');
       const message = err instanceof Error ? err.message : '';
-      if (message.includes('Access denied')) {
-        toast.error('USB access denied — printer is claimed by OS driver. Use Bluetooth (Connect) instead.');
-      } else {
-        toast.error(message || 'USB connection failed');
-      }
+      toast.error(message || 'USB connection failed');
     }
   }
 
@@ -116,11 +119,12 @@ export function usePrinter() {
     if (connectionType === 'usb' && usbDevice) {
       try {
         const iface = usbDevice.configuration?.interfaces?.[0];
-        const endpoint = iface?.alternate?.endpoints?.find(
+        const endpoints = iface?.alternate?.endpoints ?? [];
+        const bulkOut = endpoints.find(
           (ep: UsbEndpoint) => ep.direction === 'out' && ep.type === 'bulk',
         );
-        if (!endpoint) throw new Error('No USB OUT endpoint found');
-        await usbDevice.transferOut(endpoint.endpointNumber, data);
+        const endpointNumber = bulkOut?.endpointNumber ?? 2;
+        await usbDevice.transferOut(endpointNumber, data);
       } catch (err) {
         setStatus('disconnected');
         toast.error(err instanceof Error ? err.message : 'USB print failed');
