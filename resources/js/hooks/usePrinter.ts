@@ -90,7 +90,12 @@ export function usePrinter() {
       setStatus('connected');
     } catch (err) {
       setStatus('disconnected');
-      toast.error(err instanceof Error ? err.message : 'USB connection failed');
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('Access denied')) {
+        toast.error('USB access denied — printer is claimed by OS driver. Use Bluetooth (Connect) instead.');
+      } else {
+        toast.error(message || 'USB connection failed');
+      }
     }
   }
 
