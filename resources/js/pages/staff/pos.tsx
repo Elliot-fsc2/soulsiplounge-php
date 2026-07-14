@@ -1,14 +1,11 @@
-import { Head, usePage } from '@inertiajs/react';
-import { useState, useCallback, useEffect } from 'react';
-import { Coffee, Cookie, DoorOpen, Printer, ShoppingCart, Wifi, WifiOff } from 'lucide-react';
+import { Head } from '@inertiajs/react';
+import { useState, useCallback } from 'react';
+import { Coffee, Cookie, DoorOpen, ShoppingCart } from 'lucide-react';
 import ProductGrid from '@/components/pos/ProductGrid';
 import CartPanel, { type CartItem } from '@/components/pos/CartPanel';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import RoomSelector from '@/components/pos/RoomSelector';
 import { formatCurrency } from '@/lib/format';
-import { usePrinter } from '@/hooks/usePrinter';
-import { buildReceipt, buildKitchenChit } from '@/lib/escpos';
-import type { PrintData } from '@/lib/escpos';
 
 interface Product {
   id: string;
@@ -43,45 +40,6 @@ export default function StaffPos({ products, rooms }: Props) {
   const [bookingId] = useState<string | null>(null);
   const [showRoomSelector, setShowRoomSelector] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [printStatus, setPrintStatus] = useState<string | null>(null);
-
-  const { connect, print, status: printerStatus, isSupported } = usePrinter();
-
-  const { props: pageProps } = usePage();
-  const printData = (pageProps.printData ?? undefined) as PrintData | undefined;
-
-  useEffect(() => {
-    const data = printData;
-    if (!data) return;
-
-    (async () => {
-      try {
-        setPrintStatus('Printing receipt...');
-        const receiptBytes = buildReceipt(data.invoice);
-        await print(receiptBytes);
-
-        if (data.print_kitchen_chit) {
-          setPrintStatus('Printing kitchen chit...');
-          const chitBytes = buildKitchenChit({
-            order_number: data.invoice.invoice_number,
-            created_at: data.invoice.created_at,
-            room_name: data.invoice.room_name,
-            items: data.invoice.items.map((item) => ({
-              product_name: item.product_name,
-              quantity: item.quantity,
-            })),
-          });
-          await print(chitBytes);
-        }
-
-        setPrintStatus('Print successful!');
-        setTimeout(() => setPrintStatus(null), 3000);
-      } catch (err) {
-        setPrintStatus(err instanceof Error ? err.message : 'Print failed');
-        setTimeout(() => setPrintStatus(null), 5000);
-      }
-    })();
-  }, [printData, print]);
 
   const roomName = roomId ? rooms.find((r) => r.id === roomId)?.name ?? null : null;
 
@@ -148,55 +106,25 @@ export default function StaffPos({ products, rooms }: Props) {
 
       <div className="flex h-[calc(100vh-4rem)] flex-col sm:flex-row gap-0 sm:gap-0">
         <div className="flex flex-1 flex-col overflow-hidden border-r border-stone-800">
-          <div className="flex items-center justify-between border-b border-stone-800 bg-stone-900/80 px-4 py-3">
-            <div className="flex items-center gap-1">
-              {categoryTabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveCategory(tab.key)}
-                    className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition ${
-                      activeCategory === tab.key
-                        ? 'bg-amber-400 text-stone-950'
-                        : 'text-stone-400 hover:bg-stone-800 hover:text-stone-200'
-                    }`}
-                  >
-                    <Icon className="size-3.5" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {printStatus && (
-                <span className="text-xs text-amber-400 animate-pulse">{printStatus}</span>
-              )}
-              {isSupported ? (
+          <div className="flex items-center gap-1 border-b border-stone-800 bg-stone-900/80 px-4 py-3">
+            {categoryTabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
                 <button
+                  key={tab.key}
                   type="button"
-                  onClick={connect}
-                  title={printerStatus === 'connected' ? 'Printer connected' : 'Connect printer'}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    printerStatus === 'connected'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200'
+                  onClick={() => setActiveCategory(tab.key)}
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition ${
+                    activeCategory === tab.key
+                      ? 'bg-amber-400 text-stone-950'
+                      : 'text-stone-400 hover:bg-stone-800 hover:text-stone-200'
                   }`}
                 >
-                  {printerStatus === 'connected' ? (
-                    <><Wifi className="size-3" /> Printer</>
-                  ) : (
-                    <><Printer className="size-3" /> Connect</>
-                  )}
+                  <Icon className="size-3.5" />
+                  {tab.label}
                 </button>
-              ) : (
-                <span className="flex items-center gap-1.5 rounded-full bg-stone-800 px-3 py-1.5 text-xs text-stone-500">
-                  <WifiOff className="size-3" /> No Serial
-                </span>
-              )}
-            </div>
+              );
+            })}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
