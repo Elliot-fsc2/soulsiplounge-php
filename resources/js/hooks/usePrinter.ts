@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export type PrinterStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -9,12 +9,22 @@ let savedPort: SerialPort | null = null;
 export function usePrinter() {
   const [status, setStatus] = useState<PrinterStatus>('disconnected');
   const [isSupported, setIsSupported] = useState(false);
+  const mounted = useRef(true);
 
   useEffect(() => {
     setIsSupported('serial' in navigator);
+
+    navigator.serial.getPorts().then((ports) => {
+      if (!mounted.current) return;
+      if (ports.length === 0) return;
+      savedPort = ports[0];
+      setStatus('connected');
+    });
+
+    return () => { mounted.current = false; };
   }, []);
 
-  const connect = useCallback(async () => {
+  async function connect() {
     if (!('serial' in navigator)) throw new Error('Web Serial not supported.');
     setStatus('connecting');
     try {
@@ -24,17 +34,17 @@ export function usePrinter() {
     } catch {
       setStatus('disconnected');
     }
-  }, []);
+  }
 
-  const disconnect = useCallback(async () => {
+  async function disconnect() {
     try {
       if (savedPort?.readable) await savedPort.close();
     } catch { /* ignore */ }
     savedPort = null;
     setStatus('disconnected');
-  }, []);
+  }
 
-  const print = useCallback(async (data: Uint8Array): Promise<void> => {
+  async function print(data: Uint8Array): Promise<void> {
     if (!savedPort) throw new Error('No printer paired.');
     try {
       await savedPort.open({ baudRate: BAUDRATE });
@@ -46,17 +56,7 @@ export function usePrinter() {
       setStatus('disconnected');
       throw err;
     }
-  }, []);
-
-  useEffect(() => {
-    if (!('serial' in navigator)) return;
-
-    navigator.serial.getPorts().then((ports) => {
-      if (ports.length === 0) return;
-      savedPort = ports[0];
-      setStatus('connected');
-    });
-  }, []);
+  }
 
   return { connect, disconnect, print, status, isSupported };
 }
