@@ -11,6 +11,7 @@ interface USBDevice {
   open(): Promise<void>;
   selectConfiguration(n: number): Promise<void>;
   claimInterface(n: number): Promise<void>;
+  clearHalt(direction: 'in' | 'out', endpointNumber: number): Promise<void>;
   transferOut(endpointNumber: number, data: Uint8Array): Promise<unknown>;
   close(): Promise<void>;
 }
@@ -103,7 +104,9 @@ export function usePrinter() {
   async function print(data: Uint8Array): Promise<void> {
     if (connectionType === 'usb' && usbDevice) {
       try {
-        await usbDevice.transferOut(1, data);
+        await usbDevice.clearHalt('out', 1);
+        const result = await usbDevice.transferOut(1, data);
+        console.log('USB write result:', result);
         return;
       } catch (err) {
         setStatus('disconnected');
