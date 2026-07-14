@@ -71,27 +71,9 @@ export function usePrinter() {
       const device = await usb().requestDevice({ filters: [] });
       await device.open();
       await device.selectConfiguration(1);
-      console.log('USB device:', device);
-      const cfg = (device as unknown as Record<string, unknown>).configuration as Record<string, unknown> | null;
-      const ifaces = cfg?.interfaces as Record<string, unknown>[] | undefined;
-      if (ifaces) {
-        for (let i = 0; i < ifaces.length; i++) {
-          const alt = ifaces[i]?.alternate as Record<string, unknown> | undefined;
-          const eps = alt?.endpoints as Record<string, unknown>[] | undefined;
-          if (eps) {
-            for (let j = 0; j < eps.length; j++) {
-              console.log(`Interface ${i} endpoint ${j}:`, {
-                endpointNumber: eps[j].endpointNumber,
-                direction: eps[j].direction,
-                type: eps[j].type,
-              });
-            }
-          }
-        }
-      }
       let claimed = false;
       for (const n of [0, 1, 2]) {
-        try { await device.claimInterface(n); claimed = true; console.log('Claimed interface', n); break; } catch { /* try next */ }
+        try { await device.claimInterface(n); claimed = true; break; } catch { /* try next */ }
       }
       if (!claimed) throw new Error('Could not claim any USB interface');
       usbDevice = device;
@@ -120,18 +102,14 @@ export function usePrinter() {
 
   async function print(data: Uint8Array): Promise<void> {
     if (connectionType === 'usb' && usbDevice) {
-      for (const ep of [2, 1, 3, 4]) {
-        try {
-          await usbDevice.transferOut(ep, data);
-          console.log('USB print succeeded on endpoint', ep);
-          return;
-        } catch (err) {
-          console.log('USB endpoint', ep, 'failed:', err);
-        }
+      try {
+        await usbDevice.transferOut(1, data);
+        return;
+      } catch (err) {
+        setStatus('disconnected');
+        toast.error(err instanceof Error ? err.message : 'USB print failed');
+        throw err;
       }
-      setStatus('disconnected');
-      toast.error('USB print failed on all endpoints');
-      throw new Error('USB print failed');
     }
 
     if (!savedPort) throw new Error('No printer paired.');
