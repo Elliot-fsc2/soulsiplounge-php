@@ -46,11 +46,17 @@ export default function StaffPos({ products, rooms }: Props) {
   const [showCheckout, setShowCheckout] = useState(false);
   const [printStatus, setPrintStatus] = useState<string | null>(null);
 
-  const { connect, print, status: printerStatus, isSupported } = usePrinter();
+  const {
+    connectSerial, connectUSB, disconnect, print,
+    status: printerStatus, connectionType,
+    isSerialSupported, isUsbSupported,
+  } = usePrinter();
+
+  const isSupported = isSerialSupported || isUsbSupported;
 
   useEffect(() => {
     if (!isSupported) {
-      toast.error('Printer not available — Web Serial API not supported in this browser');
+      toast.error('Printer not available — Web Serial / WebUSB not supported in this browser');
     }
   }, [isSupported]);
 
@@ -181,26 +187,39 @@ export default function StaffPos({ products, rooms }: Props) {
               {printStatus && (
                 <span className="text-xs text-amber-400 animate-pulse">{printStatus}</span>
               )}
-              {isSupported ? (
+              {printerStatus === 'connected' ? (
                 <button
                   type="button"
-                  onClick={connect}
-                  title={printerStatus === 'connected' ? 'Printer connected' : 'Connect printer'}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    printerStatus === 'connected'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-stone-800 text-stone-400 hover:bg-stone-700 hover:text-stone-200'
-                  }`}
+                  onClick={disconnect}
+                  title={connectionType === 'usb' ? 'USB printer' : 'Bluetooth printer'}
+                  className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition"
                 >
-                  {printerStatus === 'connected' ? (
-                    <><Wifi className="size-3" /> Printer</>
-                  ) : (
-                    <><Printer className="size-3" /> Connect</>
-                  )}
+                  <Wifi className="size-3" />
+                  {connectionType === 'usb' ? 'USB' : 'Printer'}
                 </button>
-              ) : (
+              ) : isSerialSupported ? (
+                <button
+                  type="button"
+                  onClick={connectSerial}
+                  title="Connect Bluetooth printer"
+                  className="flex items-center gap-1.5 rounded-full bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-400 transition hover:bg-stone-700 hover:text-stone-200"
+                >
+                  <Printer className="size-3" /> Connect
+                </button>
+              ) : null}
+              {printerStatus !== 'connected' && isUsbSupported && (
+                <button
+                  type="button"
+                  onClick={connectUSB}
+                  title="Connect USB printer"
+                  className="flex items-center gap-1.5 rounded-full bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-400 transition hover:bg-stone-700 hover:text-stone-200"
+                >
+                  <Printer className="size-3" /> USB
+                </button>
+              )}
+              {!isSupported && (
                 <span className="flex items-center gap-1.5 rounded-full bg-stone-800 px-3 py-1.5 text-xs text-stone-500">
-                  <WifiOff className="size-3" /> No Serial
+                  <WifiOff className="size-3" /> No Printer
                 </span>
               )}
             </div>

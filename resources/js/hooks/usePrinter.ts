@@ -2,30 +2,55 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 export type PrinterStatus = 'disconnected' | 'connecting' | 'connected';
+export type ConnectionType = 'serial' | 'usb' | null;
 
 const BAUDRATE = 9600;
 
 let savedPort: SerialPort | null = null;
+interface UsbEndpoint {
+  endpointNumber: number;
+  direction: 'in' | 'out';
+  type: 'bulk' | 'interrupt' | 'isochronous';
+}
+interface UsbInterface {
+  alternate: { endpoints: UsbEndpoint[] };
+}
+interface UsbConfiguration {
+  interfaces: UsbInterface[];
+}
+interface USBDevice {
+  configuration?: UsbConfiguration;
+  open(): Promise<void>;
+  selectConfiguration(n: number): Promise<void>;
+  claimInterface(n: number): Promise<void>;
+  transferOut(endpointNumber: number, data: Uint8Array): Promise<unknown>;
+  close(): Promise<void>;
+}
+let usbDevice: USBDevice | null = null;
 
 export function usePrinter() {
   const [status, setStatus] = useState<PrinterStatus>('disconnected');
-  const [isSupported, setIsSupported] = useState(false);
+  const [connectionType, setConnectionType] = useState<ConnectionType>(null);
+  const [isSerialSupported, setIsSerialSupported] = useState(false);
+  const [isUsbSupported, setIsUsbSupported] = useState(false);
   const mounted = useRef(true);
 
   useEffect(() => {
-    setIsSupported('serial' in navigator);
+    setIsSerialSupported('serial' in navigator);
+    setIsUsbSupported('usb' in navigator);
 
     navigator.serial.getPorts().then((ports) => {
       if (!mounted.current) return;
       if (ports.length === 0) return;
       savedPort = ports[0];
+      setConnectionType('serial');
       setStatus('connected');
     });
 
     return () => { mounted.current = false; };
   }, []);
 
-  async function connect() {
+  async function connectSerial() {
     if (!('serial' in navigator)) throw new Error('Web Serial not supported.');
     setStatus('connecting');
     try {
@@ -38,6 +63,8 @@ export function usePrinter() {
         }],
       });
       savedPort = port;
+      usbDevice = null;
+      setConnectionType('serial');
       setStatus('connected');
     } catch {
       setStatus('disconnected');
@@ -45,15 +72,58 @@ export function usePrinter() {
     }
   }
 
-  async function disconnect() {
+  function usb(): { requestDevice(opts: { filters: unknown[] }): Promise<USBDevice> } {
+    return (navigator as unknown as { usb: ReturnType<typeof usb> }).usb;
+  }
+
+  async function connectUSB() {
+    if (!('usb' in navigator)) throw new Error('WebUSB not supported.');
+    setStatus('connecting');
     try {
-      if (savedPort?.readable) await savedPort.close();
-    } catch { /* ignore */ }
-    savedPort = null;
+      const device = await usb().requestDevice({ filters: [] });
+      await device.open();
+      await device.selectConfiguration(1);
+      await device.claimInterface(0);
+      usbDevice = device;
+      savedPort = null;
+      setConnectionType('usb');
+      setStatus('connected');
+    } catch (err) {
+      setStatus('disconnected');
+      toast.error(err instanceof Error ? err.message : 'USB connection failed');
+    }
+  }
+
+  async function disconnect() {
+    if (usbDevice) {
+      try { await usbDevice.close(); } catch { /* ignore */ }
+      usbDevice = null;
+    }
+    if (savedPort) {
+      try { if (savedPort.readable) await savedPort.close(); } catch { /* ignore */ }
+      savedPort = null;
+    }
+    setConnectionType(null);
     setStatus('disconnected');
   }
 
   async function print(data: Uint8Array): Promise<void> {
+    if (connectionType === 'usb' && usbDevice) {
+      try {
+        const iface = usbDevice.configuration?.interfaces?.[0];
+        const endpoint = iface?.alternate?.endpoints?.find(
+          (ep: UsbEndpoint) => ep.direction === 'out' && ep.type === 'bulk',
+        );
+        if (!endpoint) throw new Error('No USB OUT endpoint found');
+        await usbDevice.transferOut(endpoint.endpointNumber, data);
+      } catch (err) {
+        setStatus('disconnected');
+        toast.error(err instanceof Error ? err.message : 'USB print failed');
+        throw err;
+      }
+      return;
+    }
+
     if (!savedPort) throw new Error('No printer paired.');
     try {
       await savedPort.open({ baudRate: BAUDRATE });
@@ -68,5 +138,9 @@ export function usePrinter() {
     }
   }
 
-  return { connect, disconnect, print, status, isSupported };
+  return {
+    connectSerial, connectUSB, disconnect, print,
+    status, connectionType,
+    isSerialSupported, isUsbSupported,
+  };
 }
