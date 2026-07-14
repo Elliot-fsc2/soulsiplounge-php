@@ -47,6 +47,7 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'rooms' => fn () => Room::orderBy('sort_order')->get(),
             'settings' => fn () => [],
+            'printData' => fn () => session()->pull('print_data'),
         ];
     }
 }

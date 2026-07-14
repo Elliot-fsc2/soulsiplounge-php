@@ -5,9 +5,8 @@ namespace App\Http\Controllers\Staff;
 use App\Actions\Invoice\GenerateInvoice;
 use App\Actions\Order\CancelOrder;
 use App\Actions\Order\CreateOrder;
+use App\Models\Invoice;
 use App\Models\Order;
-use App\Services\PrintDispatcher;
-use App\Services\PrinterService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -16,9 +15,7 @@ class OrderController
     public function __construct(
         private CreateOrder $createOrder,
         private CancelOrder $cancelOrder,
-        private PrinterService $printerService,
         private GenerateInvoice $generateInvoice,
-        private PrintDispatcher $printDispatcher,
     ) {}
 
     public function index()
@@ -53,12 +50,6 @@ class OrderController
                 notes: $validated['notes'] ?? null,
             );
 
-            $order->load('items');
-
-            if (config('printer.print_kitchen_chit') && $order->items->contains(fn ($item) => $item->item_type === 'product')) {
-                $this->printerService->printKitchenChit($order);
-            }
-
             if ($paymentMethod = $validated['payment_method'] ?? null) {
                 $amountTendered = $validated['amount_tendered'] ?? null;
 
@@ -71,8 +62,11 @@ class OrderController
                 ]);
             }
 
-            $this->printDispatcher->send(
-                $this->generateInvoice->execute($order->fresh())
+            $invoice = $this->generateInvoice->execute($order->fresh());
+
+            $this->flashPrintData(
+                $invoice,
+                config('printer.print_kitchen_chit') && $order->items->contains(fn ($item) => $item->item_type === 'product'),
             );
 
             return redirect()->back()->with('success', 'Order created successfully!');
@@ -124,23 +118,44 @@ class OrderController
             'change' => $amountTendered !== null ? max(0, $amountTendered - $order->total) : null,
         ]);
 
-        $this->printDispatcher->send(
-            $this->generateInvoice->execute($order)
-        );
+        $invoice = $this->generateInvoice->execute($order);
+
+        $this->flashPrintData($invoice, false);
 
         return redirect()->back()->with('success', 'Payment recorded successfully!');
     }
 
     public function receipt(Order $order)
     {
-        $order->load('items', 'user');
+        $invoice = $this->generateInvoice->execute($order);
 
-        $printed = $this->printerService->printReceipt($order);
+        $this->flashPrintData($invoice, false);
 
-        if (! $printed) {
-            return redirect()->back()->with('error', 'Printer offline. Receipt available for reprint.');
-        }
+        return redirect()->back()->with('success', 'Receipt ready for printing!');
+    }
 
-        return redirect()->back()->with('success', 'Receipt printed!');
+    private function flashPrintData(Invoice $invoice, bool $printKitchenChit): void
+    {
+        session()->flash('print_data', [
+            'invoice' => [
+                'invoice_number' => $invoice->invoice_number,
+                'created_at' => $invoice->created_at->toIso8601String(),
+                'staff_name' => $invoice->staff_name,
+                'room_name' => $invoice->room_name,
+                'guest_count' => $invoice->guest_count,
+                'subtotal' => $invoice->subtotal,
+                'total' => $invoice->total,
+                'amount_tendered' => $invoice->amount_tendered,
+                'change' => $invoice->change,
+                'payment_method' => $invoice->payment_method,
+                'items' => $invoice->items->map(fn ($item) => [
+                    'product_name' => $item->product_name,
+                    'product_price' => $item->product_price,
+                    'quantity' => $item->quantity,
+                    'subtotal' => $item->subtotal,
+                ])->toArray(),
+            ],
+            'print_kitchen_chit' => $printKitchenChit,
+        ]);
     }
 }

@@ -105,9 +105,6 @@ export function buildReceipt(invoice: PrintInvoiceData): Uint8Array {
   const totalFormatted = formatAmount(invoice.total);
   const lines: string[] = [];
 
-  lines.push(center('SOULSIPS LOUNGE'));
-  lines.push(center('An elevated social lounge'));
-  lines.push('');
   lines.push(separator().trimEnd());
   lines.push(invoice.invoice_number);
   lines.push(formatDate(invoice.created_at));

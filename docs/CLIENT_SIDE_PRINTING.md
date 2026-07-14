@@ -169,6 +169,47 @@ x1 Croissant
 ---paper cut---
 ```
 
+## File Changes
+
+### Created
+| File | Purpose |
+|---|---|
+| `resources/js/lib/escpos.ts` | ESC/POS byte builder for receipts, kitchen chits, and test pages |
+| `resources/js/hooks/usePrinter.ts` | React hook wrapping `navigator.serial` API with connect/disconnect/print |
+| `docs/CLIENT_SIDE_PRINTING.md` | This document |
+
+### Modified
+| File | Change |
+|---|---|
+| `resources/js/pages/staff/pos.tsx` | Added printer badge, connect button, and auto-print `useEffect` |
+| `app/Http/Controllers/Staff/OrderController.php` | Removed server-side `PrinterService`/`PrintDispatcher` calls; flashes `print_data` to session instead |
+| `app/Http/Middleware/HandleInertiaRequests.php` | Shared `printData` prop via `session()->pull('print_data')` |
+| `config/printer.php` | Simplified to only `print_kitchen_chit` boolean |
+| `.env.example` | Simplified printer section for Web Serial API |
+| `resources/js/types/global.d.ts` | Added `printData` type to Inertia `sharedPageProps` |
+
+### Removed
+| File | Reason |
+|---|---|
+| `app/Services/PrintDispatcher.php` | No longer needed — printing is client-side |
+| `app/Services/PrinterService.php` | No longer needed — printing is client-side |
+| `app/Jobs/PrintKitchenChit.php` | Replaced by client-side kitchen chit builder |
+| `app/Jobs/PrintReceipt.php` | Replaced by client-side receipt builder |
+| `print-server.php` | Standalone ReactPHP print agent (deprecated) |
+| `print-server` | Binary for ReactPHP print agent (deprecated) |
+| `print-agent/README.md` | Documentation for deprecated print agent |
+| `server.js` | Standalone Express Web Serial utility (functionality integrated into app) |
+
+## Testing
+
+1. Open POS page in Chrome/Edge
+2. Click "Connect Printer" button in the top-right → select Xprinter from device dialog
+3. Verify badge turns green and shows text "Printer" (connected)
+4. Create an order and process payment
+5. Receipt should print automatically
+6. Verify print status message appears briefly ("Printing receipt..." → "Print successful!")
+7. To reprint: visit the order receipt URL
+
 ## Troubleshooting
 
 - **"Web Serial not supported"**: Use Chrome or Edge (desktop)
