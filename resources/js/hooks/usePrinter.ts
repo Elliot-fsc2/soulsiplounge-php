@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export type PrinterStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -9,11 +9,9 @@ let savedPort: SerialPort | null = null;
 export function usePrinter() {
   const [status, setStatus] = useState<PrinterStatus>('disconnected');
   const [isSupported, setIsSupported] = useState(false);
-  const mounted = useRef(true);
 
   useEffect(() => {
     setIsSupported('serial' in navigator);
-    return () => { mounted.current = false; };
   }, []);
 
   const connect = useCallback(async () => {
@@ -50,17 +48,15 @@ export function usePrinter() {
     }
   }, []);
 
-  const getSavedPorts = useCallback(async () => {
+  useEffect(() => {
     if (!('serial' in navigator)) return;
-    try {
-      const ports = await navigator.serial.getPorts();
+
+    navigator.serial.getPorts().then((ports) => {
       if (ports.length === 0) return;
       savedPort = ports[0];
       setStatus('connected');
-    } catch { /* silent */ }
+    });
   }, []);
-
-  useEffect(() => { getSavedPorts(); }, [getSavedPorts]);
 
   return { connect, disconnect, print, status, isSupported };
 }
