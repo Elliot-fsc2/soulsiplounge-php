@@ -31,8 +31,11 @@ export function usePrinter() {
     try {
       const port = await navigator.serial.requestPort({
         allowedBluetoothServiceClassIds: [
-          '00001200-0000-1000-8000-00805f9b34fb',
+          '00001101-0000-1000-8000-00805f9b34fb',
         ],
+        filters: [{
+          bluetoothServiceClassId: '00001101-0000-1000-8000-00805f9b34fb',
+        }],
       });
       savedPort = port;
       setStatus('connected');
