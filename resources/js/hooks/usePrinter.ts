@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 
 export type PrinterStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -33,6 +34,7 @@ export function usePrinter() {
       setStatus('connected');
     } catch {
       setStatus('disconnected');
+      toast.error('Printer connection cancelled or failed');
     }
   }
 
@@ -54,6 +56,7 @@ export function usePrinter() {
       await savedPort.close();
     } catch (err) {
       setStatus('disconnected');
+      toast.error(err instanceof Error ? err.message : 'Print failed');
       throw err;
     }
   }
