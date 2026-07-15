@@ -1,14 +1,12 @@
 import { Head, usePage } from '@inertiajs/react';
 import { useState, useCallback, useEffect } from 'react';
-import { Coffee, Cookie, DoorOpen, Printer, ShoppingCart, Wifi, WifiOff } from 'lucide-react';
-import { toast } from 'sonner';
-import { usePrinter } from '@/hooks/usePrinter';
-import { buildReceipt, buildKitchenChit } from '@/lib/escpos';
+import { Coffee, Cookie, DoorOpen, ShoppingCart } from 'lucide-react';
 import type { PrintData } from '@/lib/escpos';
 import ProductGrid from '@/components/pos/ProductGrid';
 import CartPanel, { type CartItem } from '@/components/pos/CartPanel';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import RoomSelector from '@/components/pos/RoomSelector';
+import ReceiptPrint from '@/components/pos/ReceiptPrint';
 import { formatCurrency } from '@/lib/format';
 
 interface Product {
@@ -44,57 +42,16 @@ export default function StaffPos({ products, rooms }: Props) {
   const [bookingId] = useState<string | null>(null);
   const [showRoomSelector, setShowRoomSelector] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [printStatus, setPrintStatus] = useState<string | null>(null);
-
-  const {
-    connectSerial, connectUSB, disconnect, print,
-    status: printerStatus, connectionType,
-    isSerialSupported, isUsbSupported,
-  } = usePrinter();
-
-  const isSupported = isSerialSupported || isUsbSupported;
-
-  useEffect(() => {
-    if (!isSupported) {
-      toast.error('Printer not available — Web Serial / WebUSB not supported in this browser');
-    }
-  }, [isSupported]);
+  const [printReceipt, setPrintReceipt] = useState<PrintData | null>(null);
 
   const { props: pageProps } = usePage();
   const printData = (pageProps.printData ?? undefined) as PrintData | undefined;
 
   useEffect(() => {
-    const data = printData;
-    if (!data) return;
-
-    (async () => {
-      try {
-        setPrintStatus('Printing receipt...');
-        const receiptBytes = buildReceipt(data.invoice);
-        await print(receiptBytes);
-
-        if (data.print_kitchen_chit) {
-          setPrintStatus('Printing kitchen chit...');
-          const chitBytes = buildKitchenChit({
-            order_number: data.invoice.invoice_number,
-            created_at: data.invoice.created_at,
-            room_name: data.invoice.room_name,
-            items: data.invoice.items.map((item) => ({
-              product_name: item.product_name,
-              quantity: item.quantity,
-            })),
-          });
-          await print(chitBytes);
-        }
-
-        setPrintStatus('Print successful!');
-        setTimeout(() => setPrintStatus(null), 3000);
-      } catch (err) {
-        setPrintStatus(err instanceof Error ? err.message : 'Print failed');
-        setTimeout(() => setPrintStatus(null), 5000);
-      }
-    })();
-  }, [printData, print]);
+    if (printData) {
+      setPrintReceipt(printData);
+    }
+  }, [printData]);
 
   const roomName = roomId ? rooms.find((r) => r.id === roomId)?.name ?? null : null;
 
@@ -184,43 +141,8 @@ export default function StaffPos({ products, rooms }: Props) {
             </div>
 
             <div className="flex items-center gap-2">
-              {printStatus && (
-                <span className="text-xs text-amber-400 animate-pulse">{printStatus}</span>
-              )}
-              {printerStatus === 'connected' ? (
-                <button
-                  type="button"
-                  onClick={disconnect}
-                  title={connectionType === 'usb' ? 'USB printer' : 'Bluetooth printer'}
-                  className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition"
-                >
-                  <Wifi className="size-3" />
-                  {connectionType === 'usb' ? 'USB' : 'Printer'}
-                </button>
-              ) : isSerialSupported ? (
-                <button
-                  type="button"
-                  onClick={connectSerial}
-                  title="Connect Bluetooth printer"
-                  className="flex items-center gap-1.5 rounded-full bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-400 transition hover:bg-stone-700 hover:text-stone-200"
-                >
-                  <Printer className="size-3" /> Connect
-                </button>
-              ) : null}
-              {printerStatus !== 'connected' && isUsbSupported && (
-                <button
-                  type="button"
-                  onClick={connectUSB}
-                  title="Connect USB printer"
-                  className="flex items-center gap-1.5 rounded-full bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-400 transition hover:bg-stone-700 hover:text-stone-200"
-                >
-                  <Printer className="size-3" /> USB
-                </button>
-              )}
-              {!isSupported && (
-                <span className="flex items-center gap-1.5 rounded-full bg-stone-800 px-3 py-1.5 text-xs text-stone-500">
-                  <WifiOff className="size-3" /> No Printer
-                </span>
+              {printReceipt && (
+                <span className="text-xs text-amber-400 animate-pulse">Preparing print...</span>
               )}
             </div>
           </div>
@@ -284,6 +206,10 @@ export default function StaffPos({ products, rooms }: Props) {
           onClose={() => setShowCheckout(false)}
           onSuccess={handleCheckoutSuccess}
         />
+      )}
+
+      {printReceipt && (
+        <ReceiptPrint data={printReceipt} onClose={() => setPrintReceipt(null)} />
       )}
     </>
   );

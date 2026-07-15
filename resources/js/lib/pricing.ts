@@ -3,11 +3,10 @@ import type { Room } from '@/types/domain';
 export function computePerPersonRate(
   room: Room,
   duration: string,
-  withCake: boolean,
   guestCount: number,
 ): number {
   const tier = room.pricing.find(
-    (p) => p.duration === duration && p.with_cake === withCake,
+    (p) => p.duration === duration,
   );
 
   if (!tier) return 0;

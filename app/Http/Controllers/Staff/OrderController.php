@@ -65,9 +65,33 @@ class OrderController
                 ]);
             }
 
-            $this->printDispatcher->send(
-                $this->generateInvoice->execute($order->fresh())
-            );
+            $invoice = $this->generateInvoice->execute($order->fresh());
+
+            $this->printDispatcher->send($invoice);
+
+            session()->flash('print_data', [
+                'invoice' => [
+                    'invoice_number' => $invoice->invoice_number,
+                    'created_at' => $invoice->created_at->toIso8601String(),
+                    'staff_name' => $invoice->staff_name,
+                    'room_name' => $invoice->room_name,
+                    'guest_count' => $invoice->guest_count,
+                    'subtotal' => $invoice->subtotal / 100,
+                    'total' => $invoice->total / 100,
+                    'amount_tendered' => $invoice->amount_tendered !== null
+                        ? $invoice->amount_tendered / 100 : null,
+                    'change' => $invoice->change !== null
+                        ? $invoice->change / 100 : null,
+                    'payment_method' => $invoice->payment_method,
+                    'items' => $invoice->items->map(fn ($item) => [
+                        'product_name' => $item->product_name,
+                        'product_price' => $item->product_price / 100,
+                        'quantity' => $item->quantity,
+                        'subtotal' => $item->subtotal / 100,
+                    ])->toArray(),
+                ],
+                'print_kitchen_chit' => (bool) config('printer.print_kitchen_chit'),
+            ]);
 
             return redirect()->back()->with('success', 'Order created successfully!');
         } catch (\RuntimeException $e) {
@@ -118,9 +142,33 @@ class OrderController
             'change' => $amountTendered !== null ? max(0, $amountTendered - $order->total) : null,
         ]);
 
-        $this->printDispatcher->send(
-            $this->generateInvoice->execute($order)
-        );
+        $invoice = $this->generateInvoice->execute($order);
+
+        $this->printDispatcher->send($invoice);
+
+        session()->flash('print_data', [
+            'invoice' => [
+                'invoice_number' => $invoice->invoice_number,
+                'created_at' => $invoice->created_at->toIso8601String(),
+                'staff_name' => $invoice->staff_name,
+                'room_name' => $invoice->room_name,
+                'guest_count' => $invoice->guest_count,
+                'subtotal' => $invoice->subtotal / 100,
+                'total' => $invoice->total / 100,
+                'amount_tendered' => $invoice->amount_tendered !== null
+                    ? $invoice->amount_tendered / 100 : null,
+                'change' => $invoice->change !== null
+                    ? $invoice->change / 100 : null,
+                'payment_method' => $invoice->payment_method,
+                'items' => $invoice->items->map(fn ($item) => [
+                    'product_name' => $item->product_name,
+                    'product_price' => $item->product_price / 100,
+                    'quantity' => $item->quantity,
+                    'subtotal' => $item->subtotal / 100,
+                ])->toArray(),
+            ],
+            'print_kitchen_chit' => (bool) config('printer.print_kitchen_chit'),
+        ]);
 
         return redirect()->back()->with('success', 'Payment recorded successfully!');
     }

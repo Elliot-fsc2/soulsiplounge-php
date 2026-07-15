@@ -8,11 +8,10 @@ const DURATIONS = ['1.5', '2', '3'] as const;
 const GUEST_SIZES = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 function emptyPricing(): RoomPricingTier[] {
-  return DURATIONS.flatMap((duration) => [false, true].map((with_cake) => ({
+  return DURATIONS.map((duration) => ({
     duration,
-    with_cake,
     per_person_rates: Object.fromEntries(GUEST_SIZES.map((g) => [g, 0])),
-  })));
+  }));
 }
 
 interface Props {
@@ -80,15 +79,6 @@ export default function AdminRoomsIndex({ rooms }: Props) {
     });
   };
 
-  const toggleTierCake = (tierIdx: number) => {
-    setDraft((prev) => {
-      if (!prev) return prev;
-      const next = [...prev.pricing];
-      next[tierIdx] = { ...next[tierIdx], with_cake: !next[tierIdx].with_cake };
-      return { ...prev, pricing: next };
-    });
-  };
-
   return (
     <>
       <Head title="Rooms CRUD - Soul Sips Lounge" />
@@ -118,7 +108,7 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                   </div>
                   <div className="text-sm text-stone-300">
                     <div className="font-medium text-amber-300">{r.pricing?.length || 0} pricing tiers</div>
-                    <div className="text-stone-400 text-xs">1.5h / 2h / 3h × with & without cake</div>
+                    <div className="text-stone-400 text-xs">1.5h / 2h / 3h</div>
                   </div>
                   <div className="text-xs text-stone-400 line-clamp-2">{r.description}</div>
                 </div>
@@ -183,14 +173,13 @@ export default function AdminRoomsIndex({ rooms }: Props) {
               <div className="space-y-3">
                 <div>
                   <h4 className="text-base font-serif font-semibold text-stone-100">Pricing Matrix</h4>
-                  <p className="text-xs text-stone-500">Per-person rates in Philippine Pesos (₱). Toggle with_cake per tier.</p>
+                  <p className="text-xs text-stone-500">Per-person rates in Philippine Pesos (₱).</p>
                 </div>
                 <div className="overflow-x-auto rounded-2xl border border-stone-800 bg-stone-950/60">
                   <table className="w-full min-w-[900px]">
                     <thead>
                       <tr className="border-b border-stone-800 bg-stone-900/80">
                         <th className="px-4 py-3 text-left text-xs font-semibold text-stone-400">Duration</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-stone-400">With Cake</th>
                         {GUEST_SIZES.map((s) => (
                           <th key={s} className="px-2 py-3 text-center text-xs font-semibold text-stone-400">{s}</th>
                         ))}
@@ -201,13 +190,6 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                         <tr key={i} className="border-b border-stone-900 hover:bg-stone-900/40">
                           <td className="px-4 py-2.5 text-sm font-bold text-stone-200">
                             {tier.duration === '1.5' ? '1.5h' : `${tier.duration}h`}
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <label className="inline-flex cursor-pointer items-center gap-2">
-                              <input type="checkbox" checked={tier.with_cake} onChange={() => toggleTierCake(i)}
-                                className="h-4 w-4 rounded border-stone-600 bg-stone-950 text-amber-500 focus:ring-0" />
-                              <span className="text-xs text-stone-400">{tier.with_cake ? 'Yes' : 'No'}</span>
-                            </label>
                           </td>
                           {GUEST_SIZES.map((s) => (
                             <td key={s} className="px-1 py-1.5">

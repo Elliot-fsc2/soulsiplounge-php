@@ -2,7 +2,6 @@ export type Duration = '1.5' | '2' | '3';
 
 export interface RoomPricingTier {
   duration: Duration;
-  with_cake: boolean;
   per_person_rates: Record<number, number>;
 }
 
@@ -26,7 +25,6 @@ export interface Booking {
   room_name: string;
   guest_count: number;
   duration: Duration;
-  with_cake: boolean;
   date: string;
   time: string;
   per_person_price: number;
@@ -46,7 +44,6 @@ export interface BookingForm {
   room_id: string;
   guest_count: number;
   duration: Duration;
-  with_cake: boolean;
   date: string;
   time: string;
   voucher_code: string;

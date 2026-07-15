@@ -12,7 +12,6 @@ interface Booking {
   room_name: string;
   guest_count: number;
   duration: string;
-  with_cake: boolean;
   date: string;
   time: string;
   per_person_price: number;
@@ -68,7 +67,7 @@ export default function AdminBookingsIndex({ bookings }: Props) {
                   <div className="text-sm text-stone-300">
                     <div className="font-medium text-amber-300">{b.room_name}</div>
                     <div className="text-stone-400 text-xs">{formatDate(b.date)} at {formatTime(b.time)}</div>
-                    <div className="text-[11px] text-stone-400 mt-1">{b.guest_count} pax · {b.duration === '1.5' ? '1.5h' : `${b.duration}h`} · {b.with_cake ? 'with cake' : 'no cake'}</div>
+                    <div className="text-[11px] text-stone-400 mt-1">{b.guest_count} pax · {b.duration === '1.5' ? '1.5h' : `${b.duration}h`}</div>
                     {b.notes && <div className="mt-1 text-[11px] text-stone-500 italic">"{b.notes}"</div>}
                   </div>
                   <div className="space-y-1.5">
