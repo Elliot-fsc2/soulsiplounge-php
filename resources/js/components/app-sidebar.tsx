@@ -10,9 +10,9 @@ import {
     Mail,
     Settings,
     Ticket,
-    ShoppingCart,
     Package,
     Coffee,
+    TrendingUp,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/sidebar';
 import admin from '@/routes/admin';
 import staff from '@/routes/staff';
-import { pos } from '@/routes/staff';
 import type { NavItem } from '@/types';
 
 const footerNavItems: NavItem[] = [
@@ -56,13 +55,13 @@ export function AppSidebar() {
     ];
 
     const adminNav: NavItem[] = [
-        { title: 'POS', href: pos.url(), icon: ShoppingCart },
         { title: 'Payments', href: admin.payments.url(), icon: CreditCard },
         ...(!isStaff ? [
             { title: 'Bookings', href: admin.bookings.url(), icon: CalendarCheck },
             { title: 'Contacts', href: admin.contacts.url(), icon: Mail },
             { title: 'Rooms', href: admin.rooms.url(), icon: DoorOpen },
             { title: 'Vouchers', href: admin.vouchers.url(), icon: Ticket },
+            { title: 'Sales Report', href: admin.salesReport.url(), icon: TrendingUp },
             { title: 'Inventory', href: admin.inventory.url(), icon: Package },
             { title: 'Products', href: admin.products.url(), icon: Coffee },
             { title: 'Analytics', href: admin.analytics.url(), icon: BarChart3 },

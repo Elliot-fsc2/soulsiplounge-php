@@ -128,6 +128,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('users', Admin\UserController::class)->except(['create', 'edit', 'show', 'index']);
     Route::put('settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
 
+    Route::get('/sales-report', [Admin\SalesReportController::class, 'index'])->name('sales-report');
+
     Route::get('/inventory', [Admin\InventoryController::class, 'index'])->name('inventory');
     Route::post('/inventory/{inventoryItem}/add-stock', [Admin\InventoryController::class, 'addStock'])->name('inventory.add-stock');
     Route::post('/inventory/{inventoryItem}/adjust', [Admin\InventoryController::class, 'adjust'])->name('inventory.adjust');
