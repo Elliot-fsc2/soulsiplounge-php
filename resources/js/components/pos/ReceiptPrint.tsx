@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { PrintData } from '@/lib/escpos';
 
@@ -164,9 +164,23 @@ function renderReceiptImage(lines: string[]): string {
   return canvas.toDataURL('image/png');
 }
 
+function buildPrintHtml(imageSrc: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  body { margin: 0; padding: 2mm; background: #fff; }
+  img { display: block; width: 76mm; height: auto; margin: 0 auto; }
+</style>
+</head>
+<body><img src="${imageSrc}" alt="Receipt" /></body>
+</html>`;
+}
+
 export default function ReceiptPrint({ data, onClose }: Props) {
-  const [showOverlay, setShowOverlay] = useState(true);
-  const receiptRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const imageSrc = useMemo(() => {
     const lines = buildReceiptLines(data.invoice);
@@ -179,77 +193,48 @@ export default function ReceiptPrint({ data, onClose }: Props) {
       return;
     }
 
-    const timer = setTimeout(() => {
-      window.print();
-    }, 300);
+    const iframe = iframeRef.current;
 
-    const handleAfterPrint = () => {
-      setShowOverlay(false);
+    if (!iframe) {
+      return;
+    }
 
-      setTimeout(onClose, 500);
+    const doc = iframe.contentDocument!;
+    doc.open();
+    doc.write(buildPrintHtml(imageSrc));
+    doc.close();
+
+    const triggerPrint = () => {
+      setTimeout(() => {
+        const win = iframe.contentWindow;
+
+        if (!win) {
+          return;
+        }
+
+        win.addEventListener('afterprint', () => {
+          setTimeout(onClose, 500);
+        }, { once: true });
+
+        win.print();
+      }, 500);
     };
 
-    window.addEventListener('afterprint', handleAfterPrint);
+    const img = doc.querySelector('img');
 
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
+    if (img && img.complete) {
+      triggerPrint();
+    } else if (img) {
+      img.onload = triggerPrint;
+    }
   }, [imageSrc, onClose]);
 
   return createPortal(
-    <>
-      <style>{`
-        @media print {
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          body > *:not(.print-receipt-wrapper) {
-            display: none !important;
-          }
-          @page {
-            size: 80mm auto;
-            margin: 0;
-          }
-          .print-receipt-wrapper {
-            display: block !important;
-            width: 80mm;
-            margin: 0;
-            padding: 2mm;
-            background: #fff;
-          }
-          .print-receipt-wrapper img {
-            display: block;
-            width: 76mm;
-            height: auto;
-            margin: 0 auto;
-          }
-        }
-        @media screen {
-          .print-receipt-wrapper {
-            display: none;
-          }
-        }
-      `}</style>
-      {showOverlay && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70">
-          <div className="rounded-2xl bg-stone-900 px-8 py-6 text-center font-mono text-sm text-stone-400 shadow-2xl">
-            <strong className="mb-2 block text-base text-amber-400">
-              Printing Receipt...
-            </strong>
-            The print dialog should appear. Select your printer and click Print.
-          </div>
-        </div>
-      )}
-      <div
-        ref={receiptRef}
-        className="print-receipt-wrapper"
-        style={{ display: 'none' }}
-      >
-        {imageSrc && <img src={imageSrc} alt="Receipt" />}
-      </div>
-    </>,
+    <iframe
+      ref={iframeRef}
+      style={{ position: 'absolute', width: 0, height: 0, border: 'none' }}
+      title="Receipt Print"
+    />,
     document.body,
   );
 }
