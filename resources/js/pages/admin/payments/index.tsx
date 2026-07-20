@@ -4,6 +4,7 @@ import { ShoppingCart, CalendarCheck } from 'lucide-react';
 import { ActionButton, StatusPill, EmptyState, ListPanel } from '@/components/soul-sips-ui';
 import { formatCurrency, formatDate, formatTime } from '@/lib/format';
 import { confirm as confirmRoute, cancel, refund, destroy } from '@/routes/admin/payments';
+import Pagination from '@/components/ui/pagination';
 
 interface OrderItem {
   id: string;
@@ -45,26 +46,40 @@ interface Booking {
   time: string;
 }
 
+interface PaginatedData<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+  links: { url: string | null; label: string; active: boolean }[];
+}
+
 interface Props {
-  payments: Payment[];
+  payments: PaginatedData<Payment>;
   bookings: Booking[];
-  posOrders: PosOrder[];
+  posOrders: PaginatedData<PosOrder>;
 }
 
 type Tab = 'bookings' | 'pos';
 
 export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Props) {
+  const paymentList = payments.data;
+  const posOrderList = posOrders.data;
   const { auth } = usePage<{ auth: { user: { role: string; name: string } } }>().props;
   const isAdmin = auth.user.role === 'admin';
   const [activeTab, setActiveTab] = useState<Tab>('bookings');
 
   const bookingMap = new Map(bookings.map((b) => [b.id, b]));
 
-  const confirmedCount = payments.filter((p) => p.status === 'Confirmed').length;
-  const pendingCount = payments.filter((p) => p.status === 'Pending').length;
+  const confirmedCount = paymentList.filter((p) => p.status === 'Confirmed').length;
+  const pendingCount = paymentList.filter((p) => p.status === 'Pending').length;
 
-  const posTotalRevenue = posOrders.reduce((sum, o) => sum + o.total, 0);
-  const posCount = posOrders.length;
+  const posTotalRevenue = posOrderList.reduce((sum, o) => sum + o.total, 0);
+  const posCount = posOrders.total;
+  const posDisplayCount = posOrderList.length;
 
   const handleConfirm = (pmt: Payment) => {
     router.post(confirmRoute.url({ payment: pmt.id }), {}, { preserveScroll: true });
@@ -85,8 +100,8 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
   };
 
   const tabs: { key: Tab; label: string; icon: typeof CalendarCheck; count: number }[] = [
-    { key: 'bookings', label: 'Booking Payments', icon: CalendarCheck, count: payments.length },
-    { key: 'pos', label: 'POS Orders', icon: ShoppingCart, count: posCount },
+    { key: 'bookings', label: 'Booking Payments', icon: CalendarCheck, count: payments.total },
+    { key: 'pos', label: 'POS Orders', icon: ShoppingCart, count: posOrders.total },
   ];
 
   return (
@@ -139,7 +154,7 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
                 <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Total Booking Payments</div>
-                <div className="mt-2 text-3xl font-serif font-bold text-stone-100">{payments.length}</div>
+                <div className="mt-2 text-3xl font-serif font-bold text-stone-100">{payments.total}</div>
               </div>
               <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
                 <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Confirmed</div>
@@ -153,8 +168,8 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
 
             <ListPanel title="Booking Payments" description="Down payments and receipts for room reservations.">
               <div className="divide-y divide-white/10">
-                {payments.length === 0 && <EmptyState message="No booking payments recorded yet." />}
-                {payments.map((pmt) => {
+                {paymentList.length === 0 && <EmptyState message="No booking payments recorded yet." />}
+                {paymentList.map((pmt) => {
                   const booking = bookingMap.get(pmt.booking_id);
 
                   return (
@@ -217,6 +232,8 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
                 })}
               </div>
             </ListPanel>
+
+            <Pagination meta={payments} pageParam="payments_page" />
           </>
         )}
 
@@ -226,24 +243,24 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
                 <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Total POS Orders</div>
-                <div className="mt-2 text-3xl font-serif font-bold text-stone-100">{posCount}</div>
+                <div className="mt-2 text-3xl font-serif font-bold text-stone-100">{posOrders.total}</div>
               </div>
               <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
-                <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Total Revenue</div>
+                <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Total Revenue (Page)</div>
                 <div className="mt-2 text-3xl font-serif font-bold text-amber-400">{formatCurrency(posTotalRevenue)}</div>
               </div>
               <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
                 <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Avg per Order</div>
                 <div className="mt-2 text-3xl font-serif font-bold text-sky-300">
-                  {posCount > 0 ? formatCurrency(Math.round(posTotalRevenue / posCount)) : '—'}
+                  {posDisplayCount > 0 ? formatCurrency(Math.round(posTotalRevenue / posDisplayCount)) : '—'}
                 </div>
               </div>
             </div>
 
             <ListPanel title="POS Orders" description="Products bought at the Point of Sale.">
               <div className="divide-y divide-white/10">
-                {posOrders.length === 0 && <EmptyState message="No POS orders yet." />}
-                {posOrders.map((order) => (
+                {posOrderList.length === 0 && <EmptyState message="No POS orders yet." />}
+                {posOrderList.map((order) => (
                   <div key={order.id} className="py-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -275,6 +292,8 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
                 ))}
               </div>
             </ListPanel>
+
+            <Pagination meta={posOrders} pageParam="pos_page" />
           </>
         )}
       </div>

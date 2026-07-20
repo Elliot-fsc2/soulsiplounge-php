@@ -143,15 +143,18 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 // Admin + Staff routes (Payments page + actions)
 Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/payments', function () {
-        $payments = Payment::orderBy('created_at', 'desc')->get();
         $bookings = Booking::orderBy('created_at', 'desc')->get(['id', 'name', 'email', 'phone', 'room_name', 'date', 'time']);
 
-        // Load all paid POS orders with their items (walk-in orders have no booking_id)
+        $paymentsPage = (int) request()->query('payments_page', 1);
+        $posPage = (int) request()->query('pos_page', 1);
+
+        $payments = Payment::orderBy('created_at', 'desc')
+            ->paginate(15, ['*'], 'payments_page', $paymentsPage);
+
         $posOrders = Order::with('items')
             ->where('payment_status', 'paid')
             ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get();
+            ->paginate(15, ['*'], 'pos_page', $posPage);
 
         return inertia('admin/payments/index', [
             'payments' => $payments,
