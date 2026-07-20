@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { PrintData } from '@/lib/escpos';
 
@@ -8,14 +8,6 @@ interface Props {
 }
 
 const COLS = 40;
-
-function esc(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function fmt(n: number): string {
   return new Intl.NumberFormat('en-PH', {
@@ -77,7 +69,7 @@ function buildReceiptLines(invoice: PrintData['invoice']): string[] {
   lines.push('');
 
   for (const item of invoice.items) {
-    const name = esc(item.product_name);
+    const name = item.product_name;
     const price = fmt(item.subtotal);
 
     if (item.quantity > 1) {
@@ -126,17 +118,49 @@ function buildReceiptLines(invoice: PrintData['invoice']): string[] {
   return lines;
 }
 
-function buildReceiptHtml(invoice: PrintData['invoice']): string {
-  const lines = buildReceiptLines(invoice);
+const CANVAS_WIDTH = 800;
+const FONT_SIZE = 26;
+const CHAR_HEIGHT = 38;
+const PAD_X = 32;
+const PAD_Y = 32;
 
-  return lines.map((line) => `<div class="receipt-line">${line || '&nbsp;'}</div>`).join('');
+function renderReceiptImage(lines: string[]): string {
+  const height = PAD_Y * 2 + lines.length * CHAR_HEIGHT;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CANVAS_WIDTH;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, CANVAS_WIDTH, height);
+
+  ctx.fillStyle = '#000000';
+  ctx.font = `${FONT_SIZE}px 'Courier New', Courier, monospace`;
+  ctx.textBaseline = 'top';
+
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], PAD_X, PAD_Y + i * CHAR_HEIGHT);
+  }
+
+  return canvas.toDataURL('image/png');
 }
 
 export default function ReceiptPrint({ data, onClose }: Props) {
   const [showOverlay, setShowOverlay] = useState(true);
   const receiptRef = useRef<HTMLDivElement>(null);
 
+  const imageSrc = useMemo(() => {
+    const lines = buildReceiptLines(data.invoice);
+
+    return renderReceiptImage(lines);
+  }, [data.invoice]);
+
   useEffect(() => {
+    if (!imageSrc) {
+      return;
+    }
+
     const timer = setTimeout(() => {
       window.print();
     }, 300);
@@ -153,17 +177,11 @@ export default function ReceiptPrint({ data, onClose }: Props) {
       clearTimeout(timer);
       window.removeEventListener('afterprint', handleAfterPrint);
     };
-  }, [onClose]);
-
-  const invoice = data.invoice;
-  const receiptContent = buildReceiptHtml(invoice);
+  }, [imageSrc, onClose]);
 
   return createPortal(
     <>
       <style>{`
-        *, *::before, *::after {
-          box-sizing: border-box;
-        }
         @media print {
           body {
             margin: 0 !important;
@@ -178,34 +196,15 @@ export default function ReceiptPrint({ data, onClose }: Props) {
           }
           .print-receipt-wrapper {
             display: block !important;
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 80mm;
             margin: 0;
-            padding: 3mm 4mm;
+            padding: 0;
             background: #fff;
-            color: #000;
-            font-family: 'Courier New', 'Lucida Console', 'Monaco', monospace;
-            font-size: 10pt;
-            font-weight: 400;
-            line-height: 1.5;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
           }
-          .receipt-container {
-            width: 100%;
-            padding: 0;
-            page-break-inside: avoid;
-          }
-          .receipt-line {
-            white-space: pre;
-            font-family: 'Courier New', 'Lucida Console', 'Monaco', monospace;
-            font-size: 10pt;
-            font-weight: 400;
-            line-height: 1.5;
-            margin: 0;
-            padding: 0;
+          .print-receipt-wrapper img {
+            display: block;
+            width: 80mm;
+            height: auto;
           }
         }
         @media screen {
@@ -227,11 +226,10 @@ export default function ReceiptPrint({ data, onClose }: Props) {
       <div
         ref={receiptRef}
         className="print-receipt-wrapper"
-        style={{
-          display: 'none',
-        }}
-        dangerouslySetInnerHTML={{ __html: `<div class="receipt-container">${receiptContent}</div>` }}
-      />
+        style={{ display: 'none' }}
+      >
+        {imageSrc && <img src={imageSrc} alt="Receipt" />}
+      </div>
     </>,
     document.body,
   );
