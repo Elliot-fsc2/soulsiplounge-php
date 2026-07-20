@@ -118,10 +118,10 @@ function buildReceiptLines(invoice: PrintData['invoice']): string[] {
   return lines;
 }
 
-const CANVAS_WIDTH = 800;
+const CANVAS_WIDTH = 960;
 const FONT_SIZE = 38;
 const CHAR_HEIGHT = 54;
-const PAD_X = 48;
+const PAD_X = 40;
 const PAD_Y = 48;
 
 function thresholdToBlack(ctx: CanvasRenderingContext2D, width: number, height: number): void {
@@ -216,13 +216,14 @@ export default function ReceiptPrint({ data, onClose }: Props) {
             display: block !important;
             width: 80mm;
             margin: 0;
-            padding: 0;
+            padding: 2mm;
             background: #fff;
           }
           .print-receipt-wrapper img {
             display: block;
-            width: 80mm;
+            width: 76mm;
             height: auto;
+            margin: 0 auto;
           }
         }
         @media screen {
