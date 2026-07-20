@@ -5,6 +5,7 @@ use App\Http\Controllers\Public;
 use App\Http\Controllers\Staff;
 use App\Models\BankAccount;
 use App\Models\Booking;
+use App\Models\Order;
 use App\Models\Contact;
 use App\Models\Payment;
 use App\Models\Room;
@@ -141,10 +142,23 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
 // Admin + Staff routes (Payments page + actions)
 Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/payments', fn () => inertia('admin/payments/index', [
-        'payments' => Payment::orderBy('created_at', 'desc')->get(),
-        'bookings' => Booking::orderBy('created_at', 'desc')->get(['id', 'name', 'email', 'phone', 'room_name', 'date', 'time']),
-    ]))->name('payments');
+    Route::get('/payments', function () {
+        $payments = Payment::orderBy('created_at', 'desc')->get();
+        $bookings = Booking::orderBy('created_at', 'desc')->get(['id', 'name', 'email', 'phone', 'room_name', 'date', 'time']);
+
+        // Load all paid POS orders with their items (walk-in orders have no booking_id)
+        $posOrders = Order::with('items')
+            ->where('payment_status', 'paid')
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        return inertia('admin/payments/index', [
+            'payments' => $payments,
+            'bookings' => $bookings,
+            'posOrders' => $posOrders,
+        ]);
+    })->name('payments');
 
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::post('{payment}/confirm', [Admin\PaymentController::class, 'confirm'])->name('confirm');
