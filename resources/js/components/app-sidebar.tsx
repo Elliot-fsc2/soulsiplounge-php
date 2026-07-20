@@ -1,6 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
-    BarChart3,
     BookOpen,
     CalendarCheck,
     CreditCard,
@@ -9,6 +8,7 @@ import {
     LayoutGrid,
     Mail,
     Settings,
+    ShoppingCart,
     Ticket,
     Package,
     Coffee,
@@ -52,6 +52,8 @@ export function AppSidebar() {
 
     const platformNav: NavItem[] = [
         { title: 'Dashboard', href: isStaff ? staff.dashboard.url() : admin.dashboard.url(), icon: LayoutGrid },
+        ...(canAccessAdmin ? [{ title: 'POS', href: staff.pos.url(), icon: ShoppingCart }] : []),
+        ...(!isStaff ? [{ title: 'Sales Report', href: admin.salesReport.url(), icon: TrendingUp }] : []),
     ];
 
     const adminNav: NavItem[] = [
@@ -61,10 +63,8 @@ export function AppSidebar() {
             { title: 'Contacts', href: admin.contacts.url(), icon: Mail },
             { title: 'Rooms', href: admin.rooms.url(), icon: DoorOpen },
             { title: 'Vouchers', href: admin.vouchers.url(), icon: Ticket },
-            { title: 'Sales Report', href: admin.salesReport.url(), icon: TrendingUp },
             { title: 'Inventory', href: admin.inventory.url(), icon: Package },
             { title: 'Products', href: admin.products.url(), icon: Coffee },
-            { title: 'Analytics', href: admin.analytics.url(), icon: BarChart3 },
             { title: 'Settings', href: admin.settings.url(), icon: Settings },
         ] : []),
     ];

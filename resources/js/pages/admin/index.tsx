@@ -14,22 +14,12 @@ interface Props {
     stats: Stats;
 }
 
-const statCards = [
-    { label: 'Total Bookings', key: 'totalBookings' as const, format: (v: number) => v.toString() },
-    { label: 'Total Revenue', key: 'totalRevenue' as const, format: (v: number) => formatCurrency(v) },
-    { label: 'Confirmed', key: 'confirmedBookings' as const, format: (v: number) => v.toString() },
-    { label: 'Pending', key: 'pendingBookings' as const, format: (v: number) => v.toString() },
-    { label: 'Cancelled', key: 'cancelledBookings' as const, format: (v: number) => v.toString() },
-    { label: 'New Contacts', key: 'newContacts' as const, format: (v: number) => v.toString() },
-];
-
 const quickLinks = [
     { href: '/admin/bookings', title: 'Bookings', desc: 'Manage reservations' },
     { href: '/admin/contacts', title: 'Contacts Inbox', desc: 'View messages' },
     { href: '/admin/payments', title: 'Payments', desc: 'Review transactions' },
     { href: '/admin/rooms', title: 'Rooms', desc: 'Configure spaces' },
     { href: '/admin/vouchers', title: 'Vouchers', desc: 'Promo codes' },
-    { href: '/admin/analytics', title: 'Analytics', desc: 'Insights & reports' },
     { href: '/admin/settings', title: 'Settings', desc: 'Site configuration' },
 ];
 
@@ -44,13 +34,31 @@ export default function AdminIndex({ stats }: Props) {
                     <p className="mt-1 text-stone-400">Overview of your lounge at a glance.</p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {statCards.map((card) => (
-                        <div key={card.key} className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
-                            <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">{card.label}</div>
-                            <div className="mt-2 text-3xl font-serif font-bold text-stone-100">{card.format(stats[card.key])}</div>
-                        </div>
-                    ))}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                    <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
+                        <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Total Bookings</div>
+                        <div className="mt-2 text-3xl font-serif font-bold text-stone-100">{stats.totalBookings}</div>
+                    </div>
+                    <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
+                        <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Total Revenue</div>
+                        <div className="mt-2 text-3xl font-serif font-bold text-amber-400">{formatCurrency(stats.totalRevenue)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
+                        <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Confirmed</div>
+                        <div className="mt-2 text-3xl font-serif font-bold text-emerald-400">{stats.confirmedBookings}</div>
+                    </div>
+                    <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
+                        <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Pending</div>
+                        <div className="mt-2 text-3xl font-serif font-bold text-amber-300">{stats.pendingBookings}</div>
+                    </div>
+                    <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
+                        <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">Cancelled</div>
+                        <div className="mt-2 text-3xl font-serif font-bold text-rose-400">{stats.cancelledBookings}</div>
+                    </div>
+                    <div className="rounded-2xl border border-stone-800 bg-stone-900 p-5">
+                        <div className="text-xs uppercase tracking-wider text-stone-500 font-sans">New Contacts</div>
+                        <div className="mt-2 text-3xl font-serif font-bold text-sky-300">{stats.newContacts}</div>
+                    </div>
                 </div>
 
                 <div>
