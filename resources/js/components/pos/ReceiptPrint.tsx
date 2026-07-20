@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void;
 }
 
-const COLS = 48;
+const COLS = 40;
 
 function esc(str: string): string {
   return str
@@ -161,49 +161,51 @@ export default function ReceiptPrint({ data, onClose }: Props) {
   return createPortal(
     <>
       <style>{`
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
         @media print {
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
           body > *:not(.print-receipt-wrapper) {
             display: none !important;
-          }
-          .print-receipt-wrapper {
-            display: block !important;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
           }
           @page {
             size: 80mm auto;
             margin: 0;
           }
           .print-receipt-wrapper {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 80mm;
             margin: 0;
             padding: 3mm 4mm;
             background: #fff;
             color: #000;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            font-weight: 700;
-            line-height: 1.6;
+            font-family: 'Courier New', 'Lucida Console', 'Monaco', monospace;
+            font-size: 10pt;
+            font-weight: 400;
+            line-height: 1.5;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
           .receipt-container {
             width: 100%;
             padding: 0;
-            box-sizing: border-box;
             page-break-inside: avoid;
           }
           .receipt-line {
             white-space: pre;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            font-weight: 700;
-            line-height: 1.6;
+            font-family: 'Courier New', 'Lucida Console', 'Monaco', monospace;
+            font-size: 10pt;
+            font-weight: 400;
+            line-height: 1.5;
             margin: 0;
             padding: 0;
-            letter-spacing: 0.5px;
           }
         }
         @media screen {
