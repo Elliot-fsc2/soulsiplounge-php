@@ -7,6 +7,8 @@ interface Props {
   onClose: () => void;
 }
 
+const COLS = 48;
+
 function esc(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -25,6 +27,7 @@ function fmt(n: number): string {
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
+
   return (
     d.toLocaleDateString('en-PH', { month: 'short', day: '2-digit', year: 'numeric' }) +
     ' ' +
@@ -32,60 +35,115 @@ function fmtDate(iso: string): string {
   );
 }
 
-function buildReceiptHtml(invoice: PrintData['invoice']): string {
-  const itemsHtml = invoice.items
-    .map(
-      (item) => `
-    <div>
-      <div style="display:flex;justify-content:space-between">
-        <span>${esc(item.product_name)}</span>
-        <span>${fmt(item.subtotal)}</span>
-      </div>
-      ${
-        item.quantity > 1
-          ? `<div style="font-size:10px;padding-left:4px">x${item.quantity} @ ${fmt(item.product_price)}</div>`
-          : ''
-      }
-    </div>`,
-    )
-    .join('');
+function padRight(str: string, len: number): string {
+  return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
+}
 
-  return `
-    <div class="receipt-container">
-      <div class="c l b">SOULSIPS LOUNGE</div>
-      <div class="c" style="font-size:10px;margin-bottom:5px">An elevated social lounge</div>
-      <div class="s"></div>
-      <div class="r"><span>${esc(invoice.invoice_number)}</span><span>${fmtDate(invoice.created_at)}</span></div>
-      <div>Staff: ${esc(invoice.staff_name)}</div>
-      ${invoice.room_name ? `<div>Room: ${esc(invoice.room_name)}${invoice.guest_count != null ? ` (${invoice.guest_count} pax)` : ''}</div>` : ''}
-      <div class="s"></div>
-      ${itemsHtml}
-      <div class="s"></div>
-      <div class="r b" style="font-size:14px"><span>TOTAL</span><span>${fmt(invoice.total)}</span></div>
-      ${invoice.payment_method ? `<div>Payment: ${invoice.payment_method.toUpperCase()}</div>` : ''}
-      ${invoice.amount_tendered !== null ? `<div class="r"><span>Cash</span><span>${fmt(invoice.amount_tendered)}</span></div>` : ''}
-      ${invoice.change !== null ? `<div class="r"><span>Change</span><span>${fmt(invoice.change)}</span></div>` : ''}
-      <div class="s"></div>
-      <div class="c">THIS IS NOT AN OFFICIAL RECEIPT</div>
-      <div class="s"></div>
-      <div class="c b">Thank you!</div>
-      <div class="c">Visit again :)</div>
-    </div>`;
+function center(str: string, len: number = COLS): string {
+  const pad = Math.max(0, Math.floor((len - str.length) / 2));
+
+  return ' '.repeat(pad) + str;
+}
+
+function separator(): string {
+  return '-'.repeat(COLS);
+}
+
+function doubleSeparator(): string {
+  return '='.repeat(COLS);
+}
+
+function buildReceiptLines(invoice: PrintData['invoice']): string[] {
+  const lines: string[] = [];
+
+  lines.push(doubleSeparator());
+  lines.push(center('SOULSIPS LOUNGE'));
+  lines.push(center('An elevated social lounge'));
+  lines.push(doubleSeparator());
+  lines.push('');
+
+  lines.push(`${padRight('Invoice:', 12)}${invoice.invoice_number}`);
+  lines.push(`${padRight('Date:', 12)}${fmtDate(invoice.created_at)}`);
+  lines.push(`${padRight('Staff:', 12)}${invoice.staff_name}`);
+
+  if (invoice.room_name) {
+    const roomLabel = invoice.guest_count != null
+      ? `${invoice.room_name} (${invoice.guest_count} pax)`
+      : invoice.room_name;
+    lines.push(`${padRight('Room:', 12)}${roomLabel}`);
+  }
+
+  lines.push(separator());
+  lines.push('');
+
+  for (const item of invoice.items) {
+    const name = esc(item.product_name);
+    const price = fmt(item.subtotal);
+
+    if (item.quantity > 1) {
+      lines.push(padRight(name, COLS - price.length) + price);
+      lines.push(center(`x${item.quantity} @ ${fmt(item.product_price)}`, COLS));
+    } else {
+      lines.push(padRight(name, COLS - price.length) + price);
+    }
+  }
+
+  lines.push('');
+  lines.push(separator());
+  lines.push('');
+
+  const totalStr = fmt(invoice.total);
+  lines.push(doubleSeparator());
+  lines.push(padRight('TOTAL', COLS - totalStr.length) + totalStr);
+  lines.push(doubleSeparator());
+
+  lines.push('');
+
+  if (invoice.payment_method) {
+    lines.push(`${padRight('Payment:', 12)}${invoice.payment_method.toUpperCase()}`);
+  }
+
+  if (invoice.amount_tendered !== null) {
+    const cashStr = fmt(invoice.amount_tendered);
+    lines.push(padRight('Cash:', COLS - cashStr.length) + cashStr);
+  }
+
+  if (invoice.change !== null) {
+    const changeStr = fmt(invoice.change);
+    lines.push(padRight('Change:', COLS - changeStr.length) + changeStr);
+  }
+
+  lines.push('');
+  lines.push(separator());
+  lines.push(center('THIS IS NOT AN OFFICIAL RECEIPT'));
+  lines.push(separator());
+  lines.push('');
+  lines.push(center('Thank you!'));
+  lines.push(center('Visit again'));
+  lines.push('');
+  lines.push(doubleSeparator());
+
+  return lines;
+}
+
+function buildReceiptHtml(invoice: PrintData['invoice']): string {
+  const lines = buildReceiptLines(invoice);
+
+  return lines.map((line) => `<div class="receipt-line">${line || '&nbsp;'}</div>`).join('');
 }
 
 export default function ReceiptPrint({ data, onClose }: Props) {
-  const [phase, setPhase] = useState<'idle' | 'printing' | 'done'>('idle');
+  const [showOverlay, setShowOverlay] = useState(true);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setPhase('printing');
-
     const timer = setTimeout(() => {
       window.print();
     }, 300);
 
     const handleAfterPrint = () => {
-      setPhase('done');
+      setShowOverlay(false);
+
       setTimeout(onClose, 500);
     };
 
@@ -121,26 +179,40 @@ export default function ReceiptPrint({ data, onClose }: Props) {
           .print-receipt-wrapper {
             width: 80mm;
             margin: 0;
-            padding: 0;
+            padding: 3mm 4mm;
             background: #fff;
             color: #000;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.6;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           .receipt-container {
             width: 100%;
-            padding: 5px;
+            padding: 0;
             box-sizing: border-box;
             page-break-inside: avoid;
           }
-          .c { text-align: center; }
-          .b { font-weight: bold; }
-          .l { font-size: 16px; }
-          .s { border-top: 1px dashed #000; margin: 5px 0; }
-          .r { display: flex; justify-content: space-between; }
+          .receipt-line {
+            white-space: pre;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            letter-spacing: 0.5px;
+          }
+        }
+        @media screen {
+          .print-receipt-wrapper {
+            display: none;
+          }
         }
       `}</style>
-      {phase === 'printing' && (
+      {showOverlay && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70">
           <div className="rounded-2xl bg-stone-900 px-8 py-6 text-center font-mono text-sm text-stone-400 shadow-2xl">
             <strong className="mb-2 block text-base text-amber-400">
@@ -156,7 +228,7 @@ export default function ReceiptPrint({ data, onClose }: Props) {
         style={{
           display: 'none',
         }}
-        dangerouslySetInnerHTML={{ __html: receiptContent }}
+        dangerouslySetInnerHTML={{ __html: `<div class="receipt-container">${receiptContent}</div>` }}
       />
     </>,
     document.body,
