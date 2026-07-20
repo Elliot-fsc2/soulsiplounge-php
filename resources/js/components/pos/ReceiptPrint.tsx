@@ -124,6 +124,22 @@ const CHAR_HEIGHT = 38;
 const PAD_X = 32;
 const PAD_Y = 32;
 
+function thresholdToBlack(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] < 240 || data[i + 1] < 240 || data[i + 2] < 240) {
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+      data[i + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
 function renderReceiptImage(lines: string[]): string {
   const height = PAD_Y * 2 + lines.length * CHAR_HEIGHT;
 
@@ -136,12 +152,14 @@ function renderReceiptImage(lines: string[]): string {
   ctx.fillRect(0, 0, CANVAS_WIDTH, height);
 
   ctx.fillStyle = '#000000';
-  ctx.font = `${FONT_SIZE}px 'Courier New', Courier, monospace`;
+  ctx.font = `bold ${FONT_SIZE}px 'Courier New', Courier, monospace`;
   ctx.textBaseline = 'top';
 
   for (let i = 0; i < lines.length; i++) {
     ctx.fillText(lines[i], PAD_X, PAD_Y + i * CHAR_HEIGHT);
   }
+
+  thresholdToBlack(ctx, CANVAS_WIDTH, height);
 
   return canvas.toDataURL('image/png');
 }
