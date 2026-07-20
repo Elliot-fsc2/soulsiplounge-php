@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void;
 }
 
-const COLS = 40;
+const COLS = 30;
 
 function fmt(n: number): string {
   return new Intl.NumberFormat('en-PH', {
@@ -119,10 +119,10 @@ function buildReceiptLines(invoice: PrintData['invoice']): string[] {
 }
 
 const CANVAS_WIDTH = 800;
-const FONT_SIZE = 26;
-const CHAR_HEIGHT = 38;
-const PAD_X = 32;
-const PAD_Y = 32;
+const FONT_SIZE = 38;
+const CHAR_HEIGHT = 54;
+const PAD_X = 48;
+const PAD_Y = 48;
 
 function thresholdToBlack(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   const imageData = ctx.getImageData(0, 0, width, height);
