@@ -6,30 +6,26 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-class FlushPosData extends Command
+class FlushAppData extends Command
 {
-    protected $signature = 'pos:flush
-                            {--force : Skip the confirmation prompt}
-                            {--bookings : Also flush bookings, payments, and contacts}';
+    protected $signature = 'app:flush-all
+                            {--force : Skip the confirmation prompt}';
 
-    protected $description = 'Truncate POS orders, invoices, and related data for a clean production slate';
+    protected $description = 'Truncate all data except users, inventory, products, and bank accounts';
 
     public function handle(): int
     {
         $tables = [
+            'bookings',
+            'contacts',
             'invoice_items',
             'invoices',
             'order_items',
             'orders',
+            'payments',
+            'rooms',
+            'vouchers',
         ];
-
-        if ($this->option('bookings')) {
-            $tables = array_merge($tables, [
-                'payments',
-                'bookings',
-                'contacts',
-            ]);
-        }
 
         if (! $this->option('force')) {
             $tableList = implode(', ', $tables);
