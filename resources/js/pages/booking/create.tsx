@@ -53,11 +53,27 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
 
     const total = perPerson * guestCount;
     const finalPrice = total - appliedDiscount;
-    const timeRange = time && date ? getTimeRangeDisplay(time, duration) : '';
-    const slotCheck = isSlotAvailable(date, resolvedRoomName, time, duration, bookings);
-    const isInPast = date && time ? new Date(`${date}T${time}`) < new Date() : false;
-    const availableSlots = date && resolvedRoomName ? generateAvailableSlots(date, resolvedRoomName, duration, bookings) : [];
-    const fullyBooked = date && resolvedRoomName ? (availableSlots.length === 0 && !(date === todayStr() && new Date().getHours() >= 22)) : false;
+
+    const availableSlots = useMemo(() => {
+        return date && resolvedRoomName ? generateAvailableSlots(date, resolvedRoomName, duration, bookings) : [];
+    }, [date, resolvedRoomName, duration, bookings]);
+
+    const slotCheck = useMemo(() => {
+        return isSlotAvailable(date, resolvedRoomName, time, duration, bookings);
+    }, [date, resolvedRoomName, time, duration, bookings]);
+
+    const isInPast = useMemo(() => {
+        return date && time ? new Date(`${date}T${time}`) < new Date() : false;
+    }, [date, time]);
+
+    const fullyBooked = useMemo(() => {
+        return date && resolvedRoomName ? (availableSlots.length === 0 && !(date === todayStr() && new Date().getHours() >= 22)) : false;
+    }, [date, resolvedRoomName, availableSlots]);
+
+    const timeRange = useMemo(() => {
+        return time && date ? getTimeRangeDisplay(time, duration) : '';
+    }, [time, date, duration]);
+
     const durationMin = parseFloat(duration) * 60;
     const maxStartMinutes = CLOSING_MINUTES - durationMin - MAINTENANCE_INTERVAL;
     const maxStartTime = minutesToTime(maxStartMinutes);

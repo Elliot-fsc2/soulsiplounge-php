@@ -13,7 +13,7 @@ export default function Welcome() {
 
             <section className="relative min-h-[calc(100vh-81px)] overflow-hidden">
                 <div className="absolute inset-0">
-                    <img src="/images/room1.jpg"
+                    <img src="/images/room1.jpg" loading="lazy"
                         alt="Cozy café interior" className="h-full w-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/75 to-stone-950/20" />
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(120,53,15,0.18),transparent_35%)]" />
