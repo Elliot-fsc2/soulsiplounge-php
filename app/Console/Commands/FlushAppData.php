@@ -23,7 +23,6 @@ class FlushAppData extends Command
             'order_items',
             'orders',
             'payments',
-            'rooms',
             'vouchers',
         ];
 
