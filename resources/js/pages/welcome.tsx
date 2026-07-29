@@ -15,28 +15,28 @@ export default function Welcome() {
                 <div className="absolute inset-0">
                     <img src="/images/room1.jpg" loading="lazy"
                         alt="Cozy café interior" className="h-full w-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/75 to-stone-950/20" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/80 to-stone-950/20 sm:bg-gradient-to-r sm:from-stone-950 sm:via-stone-950/75 sm:to-stone-950/20" />
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(120,53,15,0.18),transparent_35%)]" />
                 </div>
-                <div className="relative mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-7xl items-end px-4 py-14 sm:px-6 lg:px-8">
-                    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-2xl">
-                        <div className="mb-4 flex items-center gap-2">
+                <div className="relative mx-auto flex min-h-[calc(100vh-81px)] w-full max-w-7xl items-end px-4 pb-16 pt-14 sm:px-6 sm:pb-14 lg:px-8">
+                    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-2xl text-center sm:text-left">
+                        <div className="mb-4 flex items-center justify-center gap-2 sm:justify-start">
                             <span className="text-amber-400 text-lg">☕</span>
                             <span className="text-xs uppercase tracking-[0.35em] text-amber-400/90 font-sans">
                                 An elevated social lounge for every occasion
                             </span>
                         </div>
-                        <h1 className="text-5xl sm:text-7xl lg:text-8xl font-serif font-semibold tracking-tight text-stone-100 break-words">
+                        <h1 className="text-4xl sm:text-7xl lg:text-8xl font-serif font-semibold tracking-tight text-stone-100 break-words">
                             {businessName || 'Soul Sips Lounge'}
                         </h1>
-                        <p className="mt-5 max-w-xl text-lg leading-8 text-stone-300 sm:text-xl">
+                        <p className="mt-4 max-w-xl text-base leading-7 text-stone-300 sm:mt-5 sm:text-lg sm:leading-8">
                             Sip. Gather. Celebrate. Your private haven awaits.
                         </p>
-                        <div className="mt-8 flex flex-wrap gap-3">
-                            <ActionButton onClick={() => router.visit(bookingCreate())}>
+                        <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row">
+                            <ActionButton className="w-full sm:w-auto" onClick={() => router.visit(bookingCreate())}>
                                 Reserve a Room
                             </ActionButton>
-                            <ActionButton variant="ghost" onClick={() => router.visit(contactCreate())}>
+                            <ActionButton variant="ghost" className="w-full sm:w-auto" onClick={() => router.visit(contactCreate())}>
                                 Get in Touch
                             </ActionButton>
                         </div>
