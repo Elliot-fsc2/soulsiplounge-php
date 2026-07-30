@@ -32,6 +32,12 @@ export default function Welcome() {
                         <p className="mt-4 max-w-xl text-base leading-7 text-stone-300 sm:mt-5 sm:text-lg sm:leading-8">
                             Sip. Gather. Celebrate. Your private haven awaits.
                         </p>
+                        <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-4 py-2 backdrop-blur-sm">
+                            <span className="text-amber-300 text-lg">🍸</span>
+                            <span className="text-sm font-semibold tracking-wider text-amber-300 uppercase font-sans">
+                                Free drinks included with your stay
+                            </span>
+                        </div>
                         <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row">
                             <ActionButton className="w-full sm:w-auto" onClick={() => router.visit(bookingCreate())}>
                                 Reserve a Room
