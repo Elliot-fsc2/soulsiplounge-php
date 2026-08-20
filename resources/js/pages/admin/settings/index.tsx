@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { ActionButton, StatusPill, EmptyState, ListPanel, Field, Input, Textarea } from '@/components/soul-sips-ui';
 import { store as bankStore, destroy as bankDelete } from '@/routes/admin/bank-accounts';
 import { store as userStore, destroy as userDelete, update as userUpdate } from '@/routes/admin/users';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface BankAccount {
     id: string;
@@ -41,6 +42,48 @@ export default function AdminSettingsIndex({ bankAccounts: initialBankAccounts, 
     useEffect(() => { setBankAccounts(initialBankAccounts); }, [initialBankAccounts]);
     useEffect(() => { setUsers(initialUsers); }, [initialUsers]);
 
+    const [confirmState, setConfirmState] = useState<{
+        isOpen: boolean;
+        action: 'deleteBank' | 'deleteUser' | null;
+        target: BankAccount | UserRow | null;
+    }>({ isOpen: false, action: null, target: null });
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const openConfirm = (action: 'deleteBank' | 'deleteUser', target: BankAccount | UserRow) => {
+        setConfirmState({ isOpen: true, action, target });
+    };
+    const closeConfirm = () => {
+        setConfirmState({ isOpen: false, action: null, target: null });
+    };
+
+    const executeAction = () => {
+        const { action, target } = confirmState;
+        if (!action || !target) return;
+        
+        setIsProcessing(true);
+        const options = {
+            preserveScroll: true,
+            onFinish: () => {
+                setIsProcessing(false);
+                closeConfirm();
+            }
+        };
+
+        if (action === 'deleteBank') {
+            const acc = target as BankAccount;
+            router.delete(bankDelete.url({ bank_account: acc.id }), {
+                ...options,
+                onSuccess: () => setBankAccounts((prev) => prev.filter((x) => x.id !== acc.id)),
+            });
+        } else if (action === 'deleteUser') {
+            const u = target as UserRow;
+            router.delete(userDelete.url({ user: u.id }), {
+                ...options,
+                onSuccess: () => setUsers((prev) => prev.filter((x) => x.id !== u.id)),
+            });
+        }
+    };
+
     const saveBankAccount = () => {
         if (!baDraft || !baDraft.bank_name?.trim() || !baDraft.account_name?.trim() || !baDraft.account_number?.trim()) return;
         const formData = new FormData();
@@ -58,12 +101,7 @@ export default function AdminSettingsIndex({ bankAccounts: initialBankAccounts, 
     };
 
     const deleteBankAccount = (acc: BankAccount) => {
-        if (confirm(`Delete "${acc.bank_name}" account?`)) {
-            router.delete(bankDelete.url({ bank_account: acc.id }), {
-                preserveScroll: true,
-                onSuccess: () => setBankAccounts((prev) => prev.filter((x) => x.id !== acc.id)),
-            });
-        }
+        openConfirm('deleteBank', acc);
     };
 
     const saveUser = () => {
@@ -84,12 +122,7 @@ export default function AdminSettingsIndex({ bankAccounts: initialBankAccounts, 
     };
 
     const deleteUser = (u: UserRow) => {
-        if (confirm(`Delete user ${u.email}?`)) {
-            router.delete(userDelete.url({ user: u.id }), {
-                preserveScroll: true,
-                onSuccess: () => setUsers((prev) => prev.filter((x) => x.id !== u.id)),
-            });
-        }
+        openConfirm('deleteUser', u);
     };
 
     return (
@@ -293,6 +326,24 @@ export default function AdminSettingsIndex({ bankAccounts: initialBankAccounts, 
                     </ListPanel>
                 )}
             </div>
+
+            <ConfirmModal
+                isOpen={confirmState.isOpen}
+                onClose={closeConfirm}
+                onConfirm={executeAction}
+                isLoading={isProcessing}
+                title={
+                    confirmState.action === 'deleteBank' ? 'Delete Bank Account' : 'Delete User'
+                }
+                description={
+                    confirmState.action === 'deleteBank'
+                        ? `Are you sure you want to permanently delete the bank account "${(confirmState.target as BankAccount)?.bank_name}"? This action cannot be undone.`
+                        : `Are you sure you want to permanently delete the user ${(confirmState.target as UserRow)?.email}? This action cannot be undone.`
+                }
+                confirmText={
+                    confirmState.action === 'deleteBank' ? 'Yes, Delete Account' : 'Yes, Delete User'
+                }
+            />
         </>
     );
 }

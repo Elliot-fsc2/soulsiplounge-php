@@ -5,6 +5,7 @@ import { ActionButton, StatusPill, EmptyState, ListPanel } from '@/components/so
 import { formatCurrency, formatDate, formatTime } from '@/lib/format';
 import { confirm as confirmRoute, cancel, refund, destroy } from '@/routes/admin/payments';
 import Pagination from '@/components/ui/pagination';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface OrderItem {
   id: string;
@@ -85,17 +86,45 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
     router.post(confirmRoute.url({ payment: pmt.id }), {}, { preserveScroll: true });
   };
 
-  const handleCancel = (pmt: Payment) => {
-    router.post(cancel.url({ payment: pmt.id }), {}, { preserveScroll: true });
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    action: 'cancel' | 'refund' | 'delete' | null;
+    payment: Payment | null;
+  }>({
+    isOpen: false,
+    action: null,
+    payment: null,
+  });
+
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const openConfirm = (action: 'cancel' | 'refund' | 'delete', payment: Payment) => {
+    setConfirmState({ isOpen: true, action, payment });
   };
 
-  const handleRefund = (pmt: Payment) => {
-    router.post(refund.url({ payment: pmt.id }), {}, { preserveScroll: true });
+  const closeConfirm = () => {
+    setConfirmState({ isOpen: false, action: null, payment: null });
   };
 
-  const handleDelete = (pmt: Payment) => {
-    if (confirm(`Delete payment of ${formatCurrency(pmt.amount)}?`)) {
-      router.delete(destroy.url({ payment: pmt.id }), { preserveScroll: true });
+  const executeAction = () => {
+    const { action, payment } = confirmState;
+    if (!action || !payment) return;
+
+    setIsProcessing(true);
+    const options = {
+      preserveScroll: true,
+      onFinish: () => {
+        setIsProcessing(false);
+        closeConfirm();
+      },
+    };
+
+    if (action === 'cancel') {
+      router.post(cancel.url({ payment: payment.id }), {}, options);
+    } else if (action === 'refund') {
+      router.post(refund.url({ payment: payment.id }), {}, options);
+    } else if (action === 'delete') {
+      router.delete(destroy.url({ payment: payment.id }), options);
     }
   };
 
@@ -210,18 +239,18 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
                             <ActionButton variant="ghost" onClick={() => handleConfirm(pmt)}>
                               Confirm
                             </ActionButton>
-                            <ActionButton variant="ghost" onClick={() => handleCancel(pmt)}>
+                            <ActionButton variant="ghost" onClick={() => openConfirm('cancel', pmt)}>
                               Cancel
                             </ActionButton>
                           </>
                         )}
                         {pmt.status === 'Confirmed' && (
-                          <ActionButton variant="ghost" onClick={() => handleRefund(pmt)}>
+                          <ActionButton variant="ghost" onClick={() => openConfirm('refund', pmt)}>
                             Refund
                           </ActionButton>
                         )}
                         {isAdmin && (
-                          <ActionButton variant="ghost" onClick={() => handleDelete(pmt)}
+                          <ActionButton variant="ghost" onClick={() => openConfirm('delete', pmt)}
                             className="!border-rose-400/20 !bg-rose-500/10 !text-rose-300 hover:!bg-rose-500/20">
                             Delete
                           </ActionButton>
@@ -297,6 +326,30 @@ export default function AdminPaymentsIndex({ payments, bookings, posOrders }: Pr
           </>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={executeAction}
+        isLoading={isProcessing}
+        title={
+          confirmState.action === 'cancel' ? 'Cancel Payment' :
+          confirmState.action === 'refund' ? 'Refund Payment' :
+          'Delete Payment'
+        }
+        description={
+          confirmState.action === 'cancel'
+            ? 'Are you sure you want to cancel this payment? This action cannot be undone.'
+            : confirmState.action === 'refund'
+            ? 'Are you sure you want to refund this payment? This action is irreversible and the funds will be returned to the customer.'
+            : 'Are you sure you want to permanently delete this payment record? This action cannot be undone.'
+        }
+        confirmText={
+          confirmState.action === 'cancel' ? 'Yes, Cancel Payment' :
+          confirmState.action === 'refund' ? 'Yes, Refund Payment' :
+          'Yes, Delete Payment'
+        }
+      />
     </>
   );
 }

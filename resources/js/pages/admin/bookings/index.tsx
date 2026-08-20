@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActionButton, StatusPill, EmptyState, ListPanel, Field, Input, Textarea } from '@/components/soul-sips-ui';
 import { formatCurrency, formatDate, formatTime } from '@/lib/format';
 import { update, destroy } from '@/routes/admin/bookings';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface Booking {
   id: string;
@@ -28,6 +29,34 @@ export default function AdminBookingsIndex({ bookings }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', status: 'Pending', notes: '' });
 
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    action: 'delete' | null;
+    booking: Booking | null;
+  }>({ isOpen: false, action: null, booking: null });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const openConfirm = (action: 'delete', booking: Booking) => {
+    setConfirmState({ isOpen: true, action, booking });
+  };
+  const closeConfirm = () => {
+    setConfirmState({ isOpen: false, action: null, booking: null });
+  };
+
+  const executeAction = () => {
+    const { action, booking } = confirmState;
+    if (action === 'delete' && booking) {
+      setIsProcessing(true);
+      router.delete(destroy.url({ booking: booking.id }), { 
+        preserveScroll: true,
+        onFinish: () => {
+          setIsProcessing(false);
+          closeConfirm();
+        }
+      });
+    }
+  };
+
   const openEdit = (b: Booking) => {
     setEditingId(b.id);
     setForm({ name: b.name, email: b.email, phone: b.phone, status: b.status, notes: b.notes });
@@ -43,9 +72,7 @@ export default function AdminBookingsIndex({ bookings }: Props) {
   };
 
   const deleteBooking = (b: Booking) => {
-    if (confirm(`Delete reservation for ${b.name}?`)) {
-      router.delete(destroy.url({ booking: b.id }), { preserveScroll: true });
-    }
+    openConfirm('delete', b);
   };
 
   return (
@@ -118,6 +145,16 @@ export default function AdminBookingsIndex({ bookings }: Props) {
           </div>
         </ListPanel>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={executeAction}
+        isLoading={isProcessing}
+        title="Delete Reservation"
+        description={`Are you sure you want to permanently delete the reservation for "${confirmState.booking?.name}"? This action cannot be undone.`}
+        confirmText="Yes, Delete"
+      />
     </>
   );
 }

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActionButton, StatusPill, EmptyState, ListPanel, Field, Input, Textarea } from '@/components/soul-sips-ui';
 import { store, update, destroy } from '@/routes/admin/rooms';
 import type { Room, RoomPricingTier } from '@/types/domain';
+import ConfirmModal from '@/components/confirm-modal';
 
 const DURATIONS = ['1.5', '2', '3'] as const;
 const GUEST_SIZES = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -24,6 +25,41 @@ export default function AdminRoomsIndex({ rooms }: Props) {
   const [draft, setDraft] = useState<Room | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    action: 'discard' | 'delete' | null;
+    room: Room | null;
+  }>({ isOpen: false, action: null, room: null });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const openConfirm = (action: 'discard' | 'delete', room: Room | null = null) => {
+    setConfirmState({ isOpen: true, action, room });
+  };
+  const closeConfirm = () => {
+    setConfirmState({ isOpen: false, action: null, room: null });
+  };
+
+  const executeAction = () => {
+    const { action, room } = confirmState;
+    if (!action) return;
+    
+    if (action === 'discard') {
+      setEditorOpen(false);
+      setDraft(null);
+      setEditingRoom(null);
+      closeConfirm();
+    } else if (action === 'delete' && room) {
+      setIsProcessing(true);
+      router.delete(destroy.url({ room: room.id }), { 
+        preserveScroll: true,
+        onFinish: () => {
+          setIsProcessing(false);
+          closeConfirm();
+        }
+      });
+    }
+  };
+
   const openEditor = (room?: Room) => {
     if (room) {
       setEditingRoom(room);
@@ -39,11 +75,7 @@ export default function AdminRoomsIndex({ rooms }: Props) {
   };
 
   const closeEditor = () => {
-    if (confirm('Discard changes?')) {
-      setEditorOpen(false);
-      setDraft(null);
-      setEditingRoom(null);
-    }
+    openConfirm('discard');
   };
 
   const saveRoom = () => {
@@ -65,9 +97,7 @@ export default function AdminRoomsIndex({ rooms }: Props) {
   };
 
   const deleteRoom = (room: Room) => {
-    if (confirm(`Delete room "${room.name}"? This cannot be undone.`)) {
-      router.delete(destroy.url({ room: room.id }), { preserveScroll: true });
-    }
+    openConfirm('delete', room);
   };
 
   const updateTierRate = (tierIdx: number, size: number, value: number) => {
@@ -213,6 +243,24 @@ export default function AdminRoomsIndex({ rooms }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={executeAction}
+        isLoading={isProcessing}
+        title={
+          confirmState.action === 'discard' ? 'Discard Changes' : 'Delete Room'
+        }
+        description={
+          confirmState.action === 'discard'
+            ? 'Are you sure you want to discard your unsaved changes?'
+            : `Are you sure you want to permanently delete the room "${confirmState.room?.name}"? This action cannot be undone.`
+        }
+        confirmText={
+          confirmState.action === 'discard' ? 'Yes, Discard' : 'Yes, Delete'
+        }
+      />
     </>
   );
 }

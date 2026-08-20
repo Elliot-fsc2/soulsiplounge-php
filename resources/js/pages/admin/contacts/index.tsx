@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { ActionButton, StatusPill, EmptyState, ListPanel } from '@/components/soul-sips-ui';
 import type { Contact } from '@/types/domain';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface Props {
   contacts: Contact[];
@@ -10,14 +11,40 @@ interface Props {
 export default function AdminContactsIndex({ contacts }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    action: 'delete' | null;
+    contact: Contact | null;
+  }>({ isOpen: false, action: null, contact: null });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const openConfirm = (action: 'delete', contact: Contact) => {
+    setConfirmState({ isOpen: true, action, contact });
+  };
+  const closeConfirm = () => {
+    setConfirmState({ isOpen: false, action: null, contact: null });
+  };
+
+  const executeAction = () => {
+    const { action, contact } = confirmState;
+    if (action === 'delete' && contact) {
+      setIsProcessing(true);
+      router.delete(`/admin/contacts/${contact.id}`, { 
+        preserveScroll: true,
+        onFinish: () => {
+          setIsProcessing(false);
+          closeConfirm();
+        }
+      });
+    }
+  };
+
   const updateStatus = (c: Contact, status: 'Read' | 'Archived' | 'New') => {
     router.patch(`/admin/contacts/${c.id}/status`, { status }, { preserveScroll: true });
   };
 
   const deleteContact = (c: Contact) => {
-    if (confirm(`Delete message from ${c.name}?`)) {
-      router.delete(`/admin/contacts/${c.id}`, { preserveScroll: true });
-    }
+    openConfirm('delete', c);
   };
 
   return (
@@ -82,6 +109,16 @@ export default function AdminContactsIndex({ contacts }: Props) {
           </div>
         </ListPanel>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={executeAction}
+        isLoading={isProcessing}
+        title="Delete Message"
+        description={`Are you sure you want to permanently delete the message from "${confirmState.contact?.name}"? This action cannot be undone.`}
+        confirmText="Yes, Delete"
+      />
     </>
   );
 }
