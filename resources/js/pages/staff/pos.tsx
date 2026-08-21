@@ -1,11 +1,14 @@
-import { Head } from '@inertiajs/react';
-import { useState, useCallback } from 'react';
+import { Head, usePage } from '@inertiajs/react';
+import { useState, useCallback, useEffect } from 'react';
 import { Coffee, Cookie, DoorOpen, ShoppingCart } from 'lucide-react';
+import type { PrintData } from '@/lib/escpos';
 import ProductGrid from '@/components/pos/ProductGrid';
 import CartPanel, { type CartItem } from '@/components/pos/CartPanel';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import RoomSelector from '@/components/pos/RoomSelector';
+import ReceiptPrint from '@/components/pos/ReceiptPrint';
 import { formatCurrency } from '@/lib/format';
+import { computePerPersonRate } from '@/lib/pricing';
 
 interface Product {
   id: string;
@@ -18,6 +21,17 @@ interface Room {
   id: string;
   name: string;
   pricing: unknown[];
+  min_group: number;
+  max_group: number;
+}
+
+export interface AssignedRoom {
+  id: string;
+  roomId: string;
+  roomName: string;
+  guestCount: number;
+  duration: string;
+  price: number;
 }
 
 interface Props {
@@ -35,13 +49,20 @@ const categoryTabs = [
 export default function StaffPos({ products, rooms }: Props) {
   const [activeCategory, setActiveCategory] = useState('all');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [roomId, setRoomId] = useState<string | null>(null);
-  const [guestCount, setGuestCount] = useState(0);
+  const [assignedRooms, setAssignedRooms] = useState<AssignedRoom[]>([]);
   const [bookingId] = useState<string | null>(null);
   const [showRoomSelector, setShowRoomSelector] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [printReceipt, setPrintReceipt] = useState<PrintData | null>(null);
 
-  const roomName = roomId ? rooms.find((r) => r.id === roomId)?.name ?? null : null;
+  const { props: pageProps } = usePage();
+  const printData = (pageProps.printData ?? undefined) as PrintData | undefined;
+
+  useEffect(() => {
+    if (printData) {
+      setPrintReceipt(printData);
+    }
+  }, [printData]);
 
   const handleAddProduct = useCallback((product: Product) => {
     setCart((prev) => {
@@ -69,36 +90,39 @@ export default function StaffPos({ products, rooms }: Props) {
     setCart((prev) => prev.filter((item) => item.product_id !== productId));
   }, []);
 
-  const handleRoomSelect = useCallback((newRoomId: string | null, newGuestCount: number) => {
-    setRoomId(newRoomId);
-    setGuestCount(newGuestCount);
+  const handleRoomSelect = useCallback((newRoomId: string | null, newGuestCount: number, newDuration: string | null) => {
+    if (newRoomId && newDuration) {
+      const room = rooms.find((r) => r.id === newRoomId);
+      if (room) {
+        const perPersonRate = computePerPersonRate(room as any, newDuration, newGuestCount);
+        const price = perPersonRate * newGuestCount;
 
-    if (newRoomId) {
-      const roomProduct = products.find(
-        (p) => p.category === 'room' && p.name.toLowerCase().includes(rooms.find((r) => r.id === newRoomId)?.name.toLowerCase().split(' ')[0] ?? ''),
-      );
-
-      if (roomProduct) {
-        setCart((prev) => {
-          const existing = prev.find((item) => item.product_id === roomProduct.id);
-          if (existing) {
-            return prev.map((item) =>
-              item.product_id === roomProduct.id ? { ...item, quantity: newGuestCount } : item,
-            );
-          }
-          return [...prev, { product_id: roomProduct.id, name: roomProduct.name, price: roomProduct.price, quantity: newGuestCount }];
-        });
+        setAssignedRooms((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(7),
+            roomId: newRoomId,
+            roomName: room.name,
+            guestCount: newGuestCount,
+            duration: newDuration,
+            price: price,
+          },
+        ]);
       }
     }
-  }, [products, rooms]);
+  }, [rooms]);
+
+  const handleRemoveRoom = useCallback((id: string) => {
+    setAssignedRooms((prev) => prev.filter((r) => r.id !== id));
+  }, []);
 
   const handleCheckoutSuccess = useCallback(() => {
     setCart([]);
-    setRoomId(null);
-    setGuestCount(0);
+    setAssignedRooms([]);
   }, []);
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const roomsTotal = assignedRooms.reduce((sum, r) => sum + r.price, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0) + roomsTotal;
 
   return (
     <>
@@ -106,25 +130,33 @@ export default function StaffPos({ products, rooms }: Props) {
 
       <div className="flex h-[calc(100vh-4rem)] flex-col sm:flex-row gap-0 sm:gap-0">
         <div className="flex flex-1 flex-col overflow-hidden border-r border-stone-800">
-          <div className="flex items-center gap-1 border-b border-stone-800 bg-stone-900/80 px-4 py-3">
-            {categoryTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveCategory(tab.key)}
-                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition ${
-                    activeCategory === tab.key
-                      ? 'bg-amber-400 text-stone-950'
-                      : 'text-stone-400 hover:bg-stone-800 hover:text-stone-200'
-                  }`}
-                >
-                  <Icon className="size-3.5" />
-                  {tab.label}
-                </button>
-              );
-            })}
+          <div className="flex items-center justify-between border-b border-stone-800 bg-stone-900/80 px-4 py-3">
+            <div className="flex items-center gap-1">
+              {categoryTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveCategory(tab.key)}
+                    className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition ${
+                      activeCategory === tab.key
+                        ? 'bg-amber-400 text-stone-950'
+                        : 'text-stone-400 hover:bg-stone-800 hover:text-stone-200'
+                    }`}
+                  >
+                    <Icon className="size-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {printReceipt && (
+                <span className="text-xs text-amber-400 animate-pulse">Preparing print...</span>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
@@ -140,16 +172,16 @@ export default function StaffPos({ products, rooms }: Props) {
           <div className="flex-1 overflow-y-auto p-4">
             <CartPanel
               items={cart}
-              roomLabel={roomName}
-              guestCount={guestCount}
+              assignedRooms={assignedRooms}
               onUpdateQty={handleUpdateQty}
               onRemove={handleRemove}
+              onRemoveRoom={handleRemoveRoom}
               onOpenRoomSelector={() => setShowRoomSelector(true)}
               onOpenCheckout={() => setShowCheckout(true)}
             />
           </div>
 
-          {cart.length > 0 && (
+          {(cart.length > 0 || assignedRooms.length > 0) && (
             <div className="shrink-0 border-t border-stone-800 bg-stone-900/80 px-4 py-3 sm:hidden">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm text-stone-400">Total</span>
@@ -170,8 +202,6 @@ export default function StaffPos({ products, rooms }: Props) {
       {showRoomSelector && (
         <RoomSelector
           rooms={rooms}
-          selectedRoomId={roomId}
-          guestCount={guestCount}
           onSelect={handleRoomSelect}
           onClose={() => setShowRoomSelector(false)}
         />
@@ -180,12 +210,15 @@ export default function StaffPos({ products, rooms }: Props) {
       {showCheckout && (
         <CheckoutModal
           items={cart}
-          roomId={roomId}
-          guestCount={guestCount}
+          assignedRooms={assignedRooms}
           bookingId={bookingId}
           onClose={() => setShowCheckout(false)}
           onSuccess={handleCheckoutSuccess}
         />
+      )}
+
+      {printReceipt && (
+        <ReceiptPrint data={printReceipt} onClose={() => setPrintReceipt(null)} />
       )}
     </>
   );

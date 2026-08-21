@@ -1,6 +1,9 @@
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 
+import type { AssignedRoom } from '@/Pages/staff/pos';
+
+
 export interface CartItem {
   product_id: string;
   name: string;
@@ -10,16 +13,17 @@ export interface CartItem {
 
 interface Props {
   items: CartItem[];
-  roomLabel: string | null;
-  guestCount: number;
+  assignedRooms: AssignedRoom[];
   onUpdateQty: (productId: string, delta: number) => void;
   onRemove: (productId: string) => void;
+  onRemoveRoom: (id: string) => void;
   onOpenRoomSelector: () => void;
   onOpenCheckout: () => void;
 }
 
-export default function CartPanel({ items, roomLabel, guestCount, onUpdateQty, onRemove, onOpenRoomSelector, onOpenCheckout }: Props) {
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+export default function CartPanel({ items, assignedRooms, onUpdateQty, onRemove, onRemoveRoom, onOpenRoomSelector, onOpenCheckout }: Props) {
+  const roomsTotal = assignedRooms.reduce((sum, r) => sum + r.price, 0);
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0) + roomsTotal;
 
   return (
     <div className="flex h-full flex-col">
@@ -32,20 +36,36 @@ export default function CartPanel({ items, roomLabel, guestCount, onUpdateQty, o
         <button
           type="button"
           onClick={onOpenRoomSelector}
-          className="mt-3 w-full rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5 text-left text-sm text-stone-400 transition hover:border-amber-500/40 hover:text-stone-200"
+          className="mt-3 w-full rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5 text-center text-sm text-stone-400 transition hover:border-amber-500/40 hover:text-stone-200"
         >
-          {roomLabel ? (
-            <span className="text-amber-400">{roomLabel}{guestCount > 0 ? ` (${guestCount} pax)` : ''}</span>
-          ) : (
-            '+ Assign Room'
-          )}
+          + Assign Room
         </button>
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto py-4">
-        {items.length === 0 && (
-          <p className="py-8 text-center text-sm text-stone-500">Tap a product to start ordering.</p>
+        {items.length === 0 && assignedRooms.length === 0 && (
+          <p className="py-8 text-center text-sm text-stone-500">Tap a product or assign a room to start.</p>
         )}
+        {assignedRooms.map((r) => (
+          <div key={r.id} className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-amber-400">{r.roomName}</div>
+                <div className="text-xs text-stone-400">{r.duration} hrs &middot; {r.guestCount} pax</div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-amber-400">{formatCurrency(r.price)}</span>
+                <button
+                  type="button"
+                  onClick={() => onRemoveRoom(r.id)}
+                  className="shrink-0 rounded-lg p-1 text-stone-500 hover:bg-rose-500/10 hover:text-rose-400 transition"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
         {items.map((item) => (
           <div key={item.product_id} className="rounded-xl border border-stone-800 bg-stone-900 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -94,7 +114,7 @@ export default function CartPanel({ items, roomLabel, guestCount, onUpdateQty, o
         <button
           type="button"
           onClick={onOpenCheckout}
-          disabled={items.length === 0}
+          disabled={items.length === 0 && assignedRooms.length === 0}
           className="w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-bold tracking-wide text-stone-950 shadow-md shadow-amber-500/20 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Pay & Print

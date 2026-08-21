@@ -6,6 +6,7 @@ use App\Http\Controllers\Staff;
 use App\Models\BankAccount;
 use App\Models\Booking;
 use App\Models\Contact;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\User;
@@ -128,6 +129,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('users', Admin\UserController::class)->except(['create', 'edit', 'show', 'index']);
     Route::put('settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
 
+    Route::get('/sales-report', [Admin\SalesReportController::class, 'index'])->name('sales-report');
+
     Route::get('/inventory', [Admin\InventoryController::class, 'index'])->name('inventory');
     Route::post('/inventory/{inventoryItem}/add-stock', [Admin\InventoryController::class, 'addStock'])->name('inventory.add-stock');
     Route::post('/inventory/{inventoryItem}/adjust', [Admin\InventoryController::class, 'adjust'])->name('inventory.adjust');
@@ -139,10 +142,26 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
 // Admin + Staff routes (Payments page + actions)
 Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/payments', fn () => inertia('admin/payments/index', [
-        'payments' => Payment::orderBy('created_at', 'desc')->get(),
-        'bookings' => Booking::orderBy('created_at', 'desc')->get(['id', 'name', 'email', 'phone', 'room_name', 'date', 'time']),
-    ]))->name('payments');
+    Route::get('/payments', function () {
+        $bookings = Booking::orderBy('created_at', 'desc')->get(['id', 'name', 'email', 'phone', 'room_name', 'date', 'time']);
+
+        $paymentsPage = (int) request()->query('payments_page', 1);
+        $posPage = (int) request()->query('pos_page', 1);
+
+        $payments = Payment::orderBy('created_at', 'desc')
+            ->paginate(15, ['*'], 'payments_page', $paymentsPage);
+
+        $posOrders = Order::with('items')
+            ->where('payment_status', 'paid')
+            ->orderBy('created_at', 'desc')
+            ->paginate(15, ['*'], 'pos_page', $posPage);
+
+        return inertia('admin/payments/index', [
+            'payments' => $payments,
+            'bookings' => $bookings,
+            'posOrders' => $posOrders,
+        ]);
+    })->name('payments');
 
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::post('{payment}/confirm', [Admin\PaymentController::class, 'confirm'])->name('confirm');

@@ -20,7 +20,6 @@ class StoreBookingRequest extends FormRequest
             'room_id' => ['required', 'string'],
             'guest_count' => ['required', 'integer', 'min:3', 'max:12'],
             'duration' => ['required', 'string', 'in:1.5,2,3'],
-            'with_cake' => ['boolean'],
             'date' => ['required', 'date', 'after_or_equal:today'],
             'time' => ['required', 'date_format:H:i'],
             'voucher_code' => ['nullable', 'string', 'max:20'],

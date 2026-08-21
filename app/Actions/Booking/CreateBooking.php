@@ -25,7 +25,6 @@ class CreateBooking
         $perPersonPrice = $this->computePerPersonRate->execute(
             $room,
             $data['duration'],
-            $data['with_cake'] ?? false,
             $data['guest_count'],
         );
 
@@ -68,7 +67,6 @@ class CreateBooking
             'room_name' => $room->name,
             'guest_count' => $data['guest_count'],
             'duration' => $data['duration'],
-            'with_cake' => $data['with_cake'] ?? false,
             'date' => $data['date'],
             'time' => $data['time'],
             'per_person_price' => $perPersonPrice,

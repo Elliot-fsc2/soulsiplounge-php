@@ -3,16 +3,16 @@ import { useState } from 'react';
 import { ActionButton, StatusPill, EmptyState, ListPanel, Field, Input, Textarea } from '@/components/soul-sips-ui';
 import { store, update, destroy } from '@/routes/admin/rooms';
 import type { Room, RoomPricingTier } from '@/types/domain';
+import ConfirmModal from '@/components/confirm-modal';
 
 const DURATIONS = ['1.5', '2', '3'] as const;
-const GUEST_SIZES = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-function emptyPricing(): RoomPricingTier[] {
-  return DURATIONS.flatMap((duration) => [false, true].map((with_cake) => ({
+function emptyPricing(min: number, max: number): RoomPricingTier[] {
+  const sizes = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+  return DURATIONS.map((duration) => ({
     duration,
-    with_cake,
-    per_person_rates: Object.fromEntries(GUEST_SIZES.map((g) => [g, 0])),
-  })));
+    per_person_rates: Object.fromEntries(sizes.map((s) => [s, 0])),
+  }));
 }
 
 interface Props {
@@ -25,6 +25,41 @@ export default function AdminRoomsIndex({ rooms }: Props) {
   const [draft, setDraft] = useState<Room | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    action: 'discard' | 'delete' | null;
+    room: Room | null;
+  }>({ isOpen: false, action: null, room: null });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const openConfirm = (action: 'discard' | 'delete', room: Room | null = null) => {
+    setConfirmState({ isOpen: true, action, room });
+  };
+  const closeConfirm = () => {
+    setConfirmState({ isOpen: false, action: null, room: null });
+  };
+
+  const executeAction = () => {
+    const { action, room } = confirmState;
+    if (!action) return;
+    
+    if (action === 'discard') {
+      setEditorOpen(false);
+      setDraft(null);
+      setEditingRoom(null);
+      closeConfirm();
+    } else if (action === 'delete' && room) {
+      setIsProcessing(true);
+      router.delete(destroy.url({ room: room.id }), { 
+        preserveScroll: true,
+        onFinish: () => {
+          setIsProcessing(false);
+          closeConfirm();
+        }
+      });
+    }
+  };
+
   const openEditor = (room?: Room) => {
     if (room) {
       setEditingRoom(room);
@@ -33,18 +68,14 @@ export default function AdminRoomsIndex({ rooms }: Props) {
       setEditingRoom(null);
       setDraft({
         id: '', name: '', image: '', description: '',
-        min_group: 3, max_group: 12, pricing: emptyPricing(),
+        min_group: 3, max_group: 12, pricing: emptyPricing(3, 12),
       });
     }
     setEditorOpen(true);
   };
 
   const closeEditor = () => {
-    if (confirm('Discard changes?')) {
-      setEditorOpen(false);
-      setDraft(null);
-      setEditingRoom(null);
-    }
+    openConfirm('discard');
   };
 
   const saveRoom = () => {
@@ -66,38 +97,60 @@ export default function AdminRoomsIndex({ rooms }: Props) {
   };
 
   const deleteRoom = (room: Room) => {
-    if (confirm(`Delete room "${room.name}"? This cannot be undone.`)) {
-      router.delete(destroy.url({ room: room.id }), { preserveScroll: true });
-    }
+    openConfirm('delete', room);
   };
 
-  const updateTierRate = (tierIdx: number, size: number, value: number) => {
+  const updateTierRate = (tierIdx: number, size: number, value: string) => {
     setDraft((prev) => {
       if (!prev) return prev;
       const next = [...prev.pricing];
-      next[tierIdx] = { ...next[tierIdx], per_person_rates: { ...next[tierIdx].per_person_rates, [size]: value } };
+      next[tierIdx] = { 
+        ...next[tierIdx], 
+        per_person_rates: { ...next[tierIdx].per_person_rates, [size]: value === '' ? ('' as unknown as number) : Number(value) } 
+      };
       return { ...prev, pricing: next };
     });
   };
 
-  const toggleTierCake = (tierIdx: number) => {
+  const updateTierDuration = (tierIdx: number, duration: string) => {
     setDraft((prev) => {
       if (!prev) return prev;
       const next = [...prev.pricing];
-      next[tierIdx] = { ...next[tierIdx], with_cake: !next[tierIdx].with_cake };
+      next[tierIdx] = { ...next[tierIdx], duration };
       return { ...prev, pricing: next };
     });
   };
+
+  const addTier = () => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const sizes = Array.from({ length: prev.max_group - prev.min_group + 1 }, (_, i) => prev.min_group + i);
+      const newTier = { duration: '2', per_person_rates: Object.fromEntries(sizes.map((s) => [s, 0])) };
+      return { ...prev, pricing: [...prev.pricing, newTier] };
+    });
+  };
+
+  const removeTier = (tierIdx: number) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      return { ...prev, pricing: prev.pricing.filter((_, i) => i !== tierIdx) };
+    });
+  };
+
+  const guestSizes = draft ? Array.from(
+    { length: draft.max_group - draft.min_group + 1 }, 
+    (_, i) => draft.min_group + i
+  ) : [];
 
   return (
     <>
-      <Head title="Rooms CRUD - Soul Sips Lounge" />
+      <Head title="Rooms - Soul Sips Lounge" />
 
       <div className="w-full px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         <div className="rounded-2xl border border-stone-800 bg-stone-900 p-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-amber-500/80 font-sans">Rooms Management</p>
-            <h2 className="mt-1 text-2xl font-serif font-semibold text-stone-100">Rooms CRUD</h2>
+            <h2 className="mt-1 text-2xl font-serif font-semibold text-stone-100">Rooms</h2>
             <p className="mt-1 text-sm text-stone-400">Add, edit, or remove rooms. Each room has its own full pricing matrix.</p>
           </div>
           <ActionButton onClick={() => openEditor()}>+ Add Room</ActionButton>
@@ -118,7 +171,9 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                   </div>
                   <div className="text-sm text-stone-300">
                     <div className="font-medium text-amber-300">{r.pricing?.length || 0} pricing tiers</div>
-                    <div className="text-stone-400 text-xs">1.5h / 2h / 3h × with & without cake</div>
+                    <div className="text-stone-400 text-xs">
+                      {r.pricing?.map(p => `${p.duration}h`).join(' / ') || 'No pricing setup'}
+                    </div>
                   </div>
                   <div className="text-xs text-stone-400 line-clamp-2">{r.description}</div>
                 </div>
@@ -181,43 +236,56 @@ export default function AdminRoomsIndex({ rooms }: Props) {
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <h4 className="text-base font-serif font-semibold text-stone-100">Pricing Matrix</h4>
-                  <p className="text-xs text-stone-500">Per-person rates in Philippine Pesos (₱). Toggle with_cake per tier.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-base font-serif font-semibold text-stone-100">Pricing Matrix</h4>
+                    <p className="text-xs text-stone-500">Per-person rates in Philippine Pesos (₱).</p>
+                  </div>
+                  <ActionButton type="button" onClick={addTier} variant="ghost" className="text-xs py-1.5 px-3">
+                    + Add Tier
+                  </ActionButton>
                 </div>
                 <div className="overflow-x-auto rounded-2xl border border-stone-800 bg-stone-950/60">
-                  <table className="w-full min-w-[900px]">
+                  <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="border-b border-stone-800 bg-stone-900/80">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-stone-400">Duration</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-stone-400">With Cake</th>
-                        {GUEST_SIZES.map((s) => (
-                          <th key={s} className="px-2 py-3 text-center text-xs font-semibold text-stone-400">{s}</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-stone-400">Duration (hrs)</th>
+                        {guestSizes.map((s) => (
+                          <th key={s} className="px-2 py-3 text-center text-xs font-semibold text-stone-400">{s} pax</th>
                         ))}
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-stone-400">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {draft.pricing.map((tier, i) => (
                         <tr key={i} className="border-b border-stone-900 hover:bg-stone-900/40">
-                          <td className="px-4 py-2.5 text-sm font-bold text-stone-200">
-                            {tier.duration === '1.5' ? '1.5h' : `${tier.duration}h`}
+                          <td className="px-4 py-2.5">
+                            <input type="text" value={tier.duration}
+                              onChange={(e) => updateTierDuration(i, e.target.value)}
+                              placeholder="e.g. 2"
+                              className="w-20 rounded-lg border border-stone-700 bg-stone-950 px-3 py-1.5 text-sm font-bold text-stone-200 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20" />
                           </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <label className="inline-flex cursor-pointer items-center gap-2">
-                              <input type="checkbox" checked={tier.with_cake} onChange={() => toggleTierCake(i)}
-                                className="h-4 w-4 rounded border-stone-600 bg-stone-950 text-amber-500 focus:ring-0" />
-                              <span className="text-xs text-stone-400">{tier.with_cake ? 'Yes' : 'No'}</span>
-                            </label>
-                          </td>
-                          {GUEST_SIZES.map((s) => (
+                          {guestSizes.map((s) => (
                             <td key={s} className="px-1 py-1.5">
-                              <input type="number" value={tier.per_person_rates[s] ?? 0}
-                                onChange={(e) => updateTierRate(i, s, Number(e.target.value))}
-                                min={0} className="w-full rounded-lg border border-stone-700 bg-stone-950 px-2 py-1.5 text-right text-sm text-amber-300 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20" />
+                              <input type="number" value={tier.per_person_rates?.[s] ?? ''}
+                                onChange={(e) => updateTierRate(i, s, e.target.value)}
+                                min={0} className="w-full min-w-[60px] rounded-lg border border-stone-700 bg-stone-950 px-2 py-1.5 text-right text-sm text-amber-300 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20" />
                             </td>
                           ))}
+                          <td className="px-4 py-2.5 text-right">
+                            <button type="button" onClick={() => removeTier(i)}
+                              className="rounded-lg p-1.5 text-stone-500 hover:bg-rose-500/10 hover:text-rose-400 transition"
+                              title="Remove tier">✕</button>
+                          </td>
                         </tr>
                       ))}
+                      {draft.pricing.length === 0 && (
+                        <tr>
+                          <td colSpan={guestSizes.length + 2} className="px-4 py-6 text-center text-sm text-stone-500">
+                            No pricing tiers added. Click "+ Add Tier" to start.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -231,6 +299,24 @@ export default function AdminRoomsIndex({ rooms }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={executeAction}
+        isLoading={isProcessing}
+        title={
+          confirmState.action === 'discard' ? 'Discard Changes' : 'Delete Room'
+        }
+        description={
+          confirmState.action === 'discard'
+            ? 'Are you sure you want to discard your unsaved changes?'
+            : `Are you sure you want to permanently delete the room "${confirmState.room?.name}"? This action cannot be undone.`
+        }
+        confirmText={
+          confirmState.action === 'discard' ? 'Yes, Discard' : 'Yes, Delete'
+        }
+      />
     </>
   );
 }

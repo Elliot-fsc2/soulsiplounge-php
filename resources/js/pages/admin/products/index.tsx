@@ -4,6 +4,7 @@ import { Plus, X } from 'lucide-react';
 import { ActionButton, StatusPill, EmptyState, ListPanel, Field, Input } from '@/components/soul-sips-ui';
 import { formatCurrency } from '@/lib/format';
 import { store, update, destroy } from '@/routes/admin/products';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface Product {
   id: string;
@@ -25,6 +26,34 @@ export default function AdminProductsIndex({ products }: Props) {
   const [editing, setEditing] = useState<Product | null>(null);
   const [draft, setDraft] = useState({ name: '', category: 'beverage', price: 0, active: true, sort_order: 0 });
   const [submitting, setSubmitting] = useState(false);
+
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    action: 'delete' | null;
+    product: Product | null;
+  }>({ isOpen: false, action: null, product: null });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const openConfirm = (action: 'delete', product: Product) => {
+    setConfirmState({ isOpen: true, action, product });
+  };
+  const closeConfirm = () => {
+    setConfirmState({ isOpen: false, action: null, product: null });
+  };
+
+  const executeAction = () => {
+    const { action, product } = confirmState;
+    if (action === 'delete' && product) {
+      setIsProcessing(true);
+      router.delete(destroy.url({ product: product.id }), { 
+        preserveScroll: true,
+        onFinish: () => {
+          setIsProcessing(false);
+          closeConfirm();
+        }
+      });
+    }
+  };
 
   function openEditor(product?: Product) {
     if (product) {
@@ -70,9 +99,7 @@ export default function AdminProductsIndex({ products }: Props) {
   }
 
   function handleDelete(product: Product) {
-    if (confirm(`Delete "${product.name}"? This cannot be undone.`)) {
-      router.delete(destroy.url({ product: product.id }), { preserveScroll: true });
-    }
+    openConfirm('delete', product);
   }
 
   function toggleActive(product: Product) {
@@ -194,6 +221,16 @@ export default function AdminProductsIndex({ products }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={executeAction}
+        isLoading={isProcessing}
+        title="Delete Product"
+        description={`Are you sure you want to permanently delete the product "${confirmState.product?.name}"? This action cannot be undone.`}
+        confirmText="Yes, Delete"
+      />
     </>
   );
 }

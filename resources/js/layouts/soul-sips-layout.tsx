@@ -15,7 +15,7 @@ export default function SoulSipsLayout({ children }: { children: React.ReactNode
 
     return (
         <div className="min-h-screen bg-stone-950 text-stone-100">
-            <header className="sticky top-0 z-40 border-b border-stone-800 bg-stone-950/90 backdrop-blur-xl">
+            <header className="sticky top-0 z-40 border-b border-stone-800 bg-stone-950/95">
                 <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
                     <Link href={home()} className="text-left max-w-[180px] sm:max-w-xs truncate">
                         <div className="text-[10px] uppercase tracking-[0.3em] text-amber-500/80 font-sans">

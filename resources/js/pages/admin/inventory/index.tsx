@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Plus, Minus, RefreshCw, AlertTriangle, X } from 'lucide-react';
 import { ActionButton, ListPanel, EmptyState } from '@/components/soul-sips-ui';
 import { addStock, adjust, weeklyRestock } from '@/routes/admin/inventory';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface InventoryItem {
   id: string;
@@ -123,13 +124,34 @@ export default function AdminInventoryIndex({ items }: Props) {
   const [modal, setModal] = useState<{ item: InventoryItem; mode: 'add' | 'adjust' } | null>(null);
   const [restocking, setRestocking] = useState(false);
 
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    action: 'restock' | null;
+  }>({ isOpen: false, action: null });
+
+  const openConfirm = () => {
+    setConfirmState({ isOpen: true, action: 'restock' });
+  };
+  const closeConfirm = () => {
+    setConfirmState({ isOpen: false, action: null });
+  };
+
+  const executeAction = () => {
+    const { action } = confirmState;
+    if (action === 'restock') {
+      setRestocking(true);
+      router.post(weeklyRestock.url(), {}, {
+        preserveScroll: true,
+        onFinish: () => {
+          setRestocking(false);
+          closeConfirm();
+        }
+      });
+    }
+  };
+
   function handleWeeklyRestock() {
-    if (!confirm('Restock all weekly delivery items to their full weekly quantities?')) return;
-    setRestocking(true);
-    router.post(weeklyRestock.url(), {}, {
-      preserveScroll: true,
-      onFinish: () => setRestocking(false),
-    });
+    openConfirm();
   }
 
   const lowStockItems = items.filter(
@@ -225,6 +247,16 @@ export default function AdminInventoryIndex({ items }: Props) {
       {modal && (
         <StockModal item={modal.item} mode={modal.mode} onClose={() => setModal(null)} />
       )}
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={executeAction}
+        isLoading={restocking}
+        title="Weekly Restock"
+        description="Are you sure you want to restock all weekly delivery items to their full weekly quantities?"
+        confirmText="Yes, Restock"
+      />
     </>
   );
 }

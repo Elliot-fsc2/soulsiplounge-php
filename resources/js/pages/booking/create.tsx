@@ -29,8 +29,7 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [date, setDate] = useState(todayStr());
-    const [duration, setDuration] = useState<Duration>('2');
-    const [withCake, setWithCake] = useState(false);
+    const [duration, setDuration] = useState<string>('');
     const [guestCount, setGuestCount] = useState(3);
     const [time, setTime] = useState('');
     const [voucherCode, setVoucherCode] = useState('');
@@ -46,19 +45,45 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
 
     const selectedRoom = rooms.find((r) => r.id === roomId) || rooms[0];
     const resolvedRoomName = selectedRoom?.name || '';
+    
+    const roomDurations = useMemo(() => {
+        return selectedRoom?.pricing?.map(p => p.duration) || [];
+    }, [selectedRoom]);
+
+    useEffect(() => {
+        if (roomDurations.length > 0 && !roomDurations.includes(duration)) {
+            setDuration(roomDurations[0]);
+        }
+    }, [roomDurations, duration]);
 
     const perPerson = useMemo(() => {
-        if (!selectedRoom) return 0;
-        return computePerPersonRate(selectedRoom, duration, withCake, guestCount);
-    }, [selectedRoom, duration, withCake, guestCount]);
+        if (!selectedRoom || !duration) return 0;
+        return computePerPersonRate(selectedRoom, duration, guestCount);
+    }, [selectedRoom, duration, guestCount]);
 
     const total = perPerson * guestCount;
     const finalPrice = total - appliedDiscount;
-    const timeRange = time && date ? getTimeRangeDisplay(time, duration) : '';
-    const slotCheck = isSlotAvailable(date, resolvedRoomName, time, duration, bookings);
-    const isInPast = date && time ? new Date(`${date}T${time}`) < new Date() : false;
-    const availableSlots = date && resolvedRoomName ? generateAvailableSlots(date, resolvedRoomName, duration, bookings) : [];
-    const fullyBooked = date && resolvedRoomName ? (availableSlots.length === 0 && !(date === todayStr() && new Date().getHours() >= 22)) : false;
+
+    const availableSlots = useMemo(() => {
+        return date && resolvedRoomName ? generateAvailableSlots(date, resolvedRoomName, duration, bookings) : [];
+    }, [date, resolvedRoomName, duration, bookings]);
+
+    const slotCheck = useMemo(() => {
+        return isSlotAvailable(date, resolvedRoomName, time, duration, bookings);
+    }, [date, resolvedRoomName, time, duration, bookings]);
+
+    const isInPast = useMemo(() => {
+        return date && time ? new Date(`${date}T${time}`) < new Date() : false;
+    }, [date, time]);
+
+    const fullyBooked = useMemo(() => {
+        return date && resolvedRoomName ? (availableSlots.length === 0 && !(date === todayStr() && new Date().getHours() >= 22)) : false;
+    }, [date, resolvedRoomName, availableSlots]);
+
+    const timeRange = useMemo(() => {
+        return time && date ? getTimeRangeDisplay(time, duration) : '';
+    }, [time, date, duration]);
+
     const durationMin = parseFloat(duration) * 60;
     const maxStartMinutes = CLOSING_MINUTES - durationMin - MAINTENANCE_INTERVAL;
     const maxStartTime = minutesToTime(maxStartMinutes);
@@ -99,7 +124,7 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
             name, email, phone,
             room_id: roomId,
             guest_count: guestCount,
-            duration, with_cake: withCake,
+            duration,
             date, time,
             voucher_code: voucherCode.trim().toUpperCase(),
             notes,
@@ -120,7 +145,7 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
                         Call dibs on your weekly dream hangout space
                     </h2>
                     <p className="text-stone-400 leading-relaxed">
-                        A beautifully designed private room for gatherings of 3 to 12 guests. Choose your preferred duration and add a cake for a complete celebration package. Rates are per person.
+                        A beautifully designed private room for gatherings of 3 to 12 guests. Choose your preferred duration. Rates are per person.
                     </p>
                 </div>
 
@@ -192,13 +217,15 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
                         <div className="space-y-3 border-t border-stone-800 pt-5">
                             <span className="block text-sm text-stone-300 font-medium">Session Duration</span>
                             <div className="grid grid-cols-3 gap-2">
-                                {(['1.5', '2', '3'] as Duration[]).map((d) => (
+                                {roomDurations.length > 0 ? roomDurations.map((d) => (
                                     <button key={d} type="button" onClick={() => { setDuration(d); setTime(''); }}
                                         className={`rounded-xl border py-3 text-xs font-semibold transition ${duration === d ? 'border-amber-400 bg-amber-400/10 text-amber-300' : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-amber-500/30 hover:text-stone-200'}`}
                                     >
                                         {d === '1.5' ? '1.5hr' : `${d}hr`}
                                     </button>
-                                ))}
+                                )) : (
+                                    <div className="col-span-3 text-stone-500 text-sm italic">No durations configured for this room.</div>
+                                )}
                             </div>
 
                             {date && availableSlots.length > 0 && (
@@ -252,18 +279,6 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
                                     ⏰ No more available slots for today. Please choose another date.
                                 </div>
                             )}
-                        </div>
-
-                        <div className="space-y-2.5">
-                            <span className="block text-sm text-stone-300 font-medium">Celebration Cake</span>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button type="button" onClick={() => setWithCake(false)}
-                                    className={`rounded-xl border py-3 text-xs font-semibold transition ${!withCake ? 'border-amber-400 bg-amber-400/10 text-amber-300' : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-amber-500/30 hover:text-stone-200'}`}
-                                >🎂 No Cake</button>
-                                <button type="button" onClick={() => setWithCake(true)}
-                                    className={`rounded-xl border py-3 text-xs font-semibold transition ${withCake ? 'border-amber-400 bg-amber-400/10 text-amber-300' : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-amber-500/30 hover:text-stone-200'}`}
-                                >🍰 With Cake</button>
-                            </div>
                         </div>
 
                         <div className="space-y-3">
@@ -342,7 +357,6 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
                         <div className="space-y-2.5 text-sm">
                             <SummaryRow label="Room" value={selectedRoom?.name || '—'} />
                             <SummaryRow label="Duration" value={duration === '1.5' ? '1.5 Hours' : `${duration} Hours`} />
-                            <SummaryRow label="Cake" value={withCake ? '🍰 Included' : '🎂 No cake'} />
                             <SummaryRow label="Guests" value={`${guestCount} pax`} />
                             <SummaryRow label="Per person" value={formatCurrency(perPerson)} highlight />
                             {appliedDiscount > 0 && (

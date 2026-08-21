@@ -49,7 +49,6 @@ const STORAGE_KEYS = {
 const havenPricing: RoomPricingTier[] = [
   {
     duration: "1.5",
-    withCake: false,
     perPersonRates: {
       3: 1050,
       4: 840,
@@ -64,24 +63,7 @@ const havenPricing: RoomPricingTier[] = [
     },
   },
   {
-    duration: "1.5",
-    withCake: true,
-    perPersonRates: {
-      3: 1553,
-      4: 1301,
-      5: 1150,
-      6: 1049,
-      7: 977,
-      8: 936,
-      9: 882,
-      10: 848,
-      11: 821,
-      12: 798,
-    },
-  },
-  {
     duration: "2",
-    withCake: false,
     perPersonRates: {
       3: 1330,
       4: 1050,
@@ -96,24 +78,7 @@ const havenPricing: RoomPricingTier[] = [
     },
   },
   {
-    duration: "2",
-    withCake: true,
-    perPersonRates: {
-      3: 1833,
-      4: 1511,
-      5: 1318,
-      6: 1189,
-      7: 1097,
-      8: 1029,
-      9: 975,
-      10: 932,
-      11: 897,
-      12: 868,
-    },
-  },
-  {
     duration: "3",
-    withCake: false,
     perPersonRates: {
       3: 1925,
       4: 1496,
@@ -125,22 +90,6 @@ const havenPricing: RoomPricingTier[] = [
       10: 725,
       11: 678,
       12: 639,
-    },
-  },
-  {
-    duration: "3",
-    withCake: true,
-    perPersonRates: {
-      3: 2428,
-      4: 1957,
-      5: 1675,
-      6: 1487,
-      7: 1352,
-      8: 1252,
-      9: 1173,
-      10: 1111,
-      11: 1059,
-      12: 1016,
     },
   },
 ];
@@ -163,7 +112,7 @@ const defaultSettings: Settings = {
   businessName: "Soul Sips Lounge",
   tagline: "Sip. Gather. Celebrate. Your private haven awaits.",
   description:
-    "A beautifully designed private room for gatherings of 3 to 12 guests. Choose your preferred duration and add a cake for a complete celebration package. Rates are per person.",
+    "A beautifully designed private room for gatherings of 3 to 12 guests. Choose your preferred duration. Rates are per person.",
   address:
     "My Ville Co Living 24 Ortigas Avenue Extension Barangay Rosario Pasig City 2nd floor",
   phone: "0917 716 8618",
@@ -244,7 +193,6 @@ const defaultBookings: Booking[] = [
     roomName: "The Haven Room",
     guestCount: 6,
     duration: "2",
-    withCake: true,
     date: "2026-06-12",
     time: "15:00",
     perPersonPrice: 1189,
@@ -264,7 +212,6 @@ const defaultBookings: Booking[] = [
     roomName: "The Haven Room",
     guestCount: 4,
     duration: "3",
-    withCake: false,
     date: "2026-06-18",
     time: "16:30",
     perPersonPrice: 1496,
@@ -294,9 +241,9 @@ const defaultContacts: ContactMessage[] = [
     name: "Sofia Nguyen",
     email: "sofia@example.com",
     phone: "+63 928 555 0146",
-    subject: "Cake customization",
+    subject: "Room inquiry",
     message:
-      "Do you offer specific cake flavors? We'd like a chocolate fudge for our party.",
+      "Hi! I'd like to inquire about room availability for my upcoming celebration.",
     status: "Read",
     createdAt: new Date().toISOString(),
   },
@@ -310,7 +257,6 @@ const bookingDefaults: BookingDraft = {
   roomName: "",
   guestCount: 4,
   duration: "2",
-  withCake: false,
   date: "",
   time: "13:00",
   voucherCode: "",
@@ -380,12 +326,11 @@ function formatCurrency(value: number) {
 function computePerPersonRate(
   room: RoomItem | undefined,
   duration: Duration,
-  withCake: boolean,
   guestCount: number,
 ): number {
   if (!room) return 0;
   const tier = room.pricing.find(
-    (p) => p.duration === duration && p.withCake === withCake,
+    (p) => p.duration === duration,
   );
   if (!tier) return 0;
   return tier.perPersonRates[guestCount] ?? 0;
@@ -785,7 +730,6 @@ function App() {
     const perPerson = computePerPersonRate(
       room,
       values.duration,
-      values.withCake,
       values.guestCount,
     );
     const total = perPerson * values.guestCount;
@@ -875,7 +819,6 @@ function App() {
       roomName: values.roomName || settings.rooms[0]?.name || "The Haven Room",
       guestCount: values.guestCount,
       duration: values.duration,
-      withCake: values.withCake,
       date: values.date,
       time: values.time,
       perPersonPrice: perPerson,
@@ -950,7 +893,6 @@ function App() {
       roomName: booking.roomName,
       guestCount: booking.guestCount,
       duration: booking.duration,
-      withCake: booking.withCake,
       date: booking.date,
       time: booking.time,
       voucherCode: booking.voucherCode || "",
@@ -1811,7 +1753,6 @@ function BookingPage({
   const perPerson = computePerPersonRate(
     room,
     draft.duration,
-    draft.withCake,
     draft.guestCount,
   );
   const total = perPerson * draft.guestCount;
@@ -2077,29 +2018,6 @@ function BookingPage({
               )}
           </div>
 
-          {/* Cake toggle */}
-          <div className="space-y-2.5">
-            <span className="block text-sm text-stone-300 font-medium">
-              Celebration Cake
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => onChange({ ...draft, withCake: false })}
-                className={`rounded-xl border py-3 text-xs font-semibold transition ${!draft.withCake ? "border-amber-400 bg-amber-400/10 text-amber-300" : "border-stone-700 bg-stone-800 text-stone-400 hover:border-amber-500/30 hover:text-stone-200"}`}
-              >
-                🎂 No Cake
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange({ ...draft, withCake: true })}
-                className={`rounded-xl border py-3 text-xs font-semibold transition ${draft.withCake ? "border-amber-400 bg-amber-400/10 text-amber-300" : "border-stone-700 bg-stone-800 text-stone-400 hover:border-amber-500/30 hover:text-stone-200"}`}
-              >
-                🍰 With Cake
-              </button>
-            </div>
-          </div>
-
           {/* Guest count */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -2210,7 +2128,7 @@ function BookingPage({
             <CafeTextarea
               value={draft.notes}
               onChange={(v) => onChange({ ...draft, notes: v })}
-              placeholder="Cake flavor, seating arrangement, dietary restrictions..."
+              placeholder="Seating arrangement, dietary restrictions..."
               rows={3}
             />
           </CafeField>
@@ -2257,10 +2175,6 @@ function BookingPage({
                   ? "1.5 Hours"
                   : `${draft.duration} Hours`
               }
-            />
-            <SummaryRow
-              label="Cake"
-              value={draft.withCake ? "🍰 Included" : "🎂 No cake"}
             />
             <SummaryRow label="Guests" value={`${draft.guestCount} pax`} />
             <SummaryRow
@@ -2585,10 +2499,6 @@ function PaymentPage({
                   ? "1.5 Hours"
                   : `${booking.duration} Hours`
               }
-            />
-            <SummaryRow
-              label="Cake"
-              value={booking.withCake ? "🍰 Included" : "🎂 No cake"}
             />
             <SummaryRow label="Guests" value={`${booking.guestCount} pax`} />
             <SummaryRow
@@ -3198,8 +3108,7 @@ function AdminPanel(props: {
                           </div>
                           <div className="text-[11px] text-slate-400 mt-1">
                             👥 {b.guestCount} pax · ⏱{" "}
-                            {b.duration === "1.5" ? "1.5h" : `${b.duration}h`} ·{" "}
-                            {b.withCake ? "🍰 with cake" : "🎂 no cake"}
+                            {b.duration === "1.5" ? "1.5h" : `${b.duration}h`}
                           </div>
                         </div>
                         <div className="space-y-1.5">
@@ -3546,7 +3455,7 @@ function AdminPanel(props: {
                     </h3>
                     <p className="mt-1 text-sm text-stone-400">
                       Add, edit, or remove rooms. Each room has its own full
-                      pricing matrix (3–12 pax × durations × cake).
+                      pricing matrix (3–12 pax × durations).
                     </p>
                   </div>
                   <button
@@ -3601,7 +3510,7 @@ function AdminPanel(props: {
                             {r.pricing.length} pricing tiers
                           </div>
                           <div className="text-slate-400 text-xs">
-                            1.5h / 2h / 3h × with & without cake
+                            1.5h / 2h / 3h
                           </div>
                         </div>
                         <div className="text-xs text-slate-400 line-clamp-2">
@@ -4919,7 +4828,6 @@ function FrontDeskModal({
   const perPerson = computePerPersonRate(
     room,
     roomDraft.duration,
-    roomDraft.withCake,
     roomDraft.guestCount,
   );
   const total = perPerson * roomDraft.guestCount;
@@ -5151,8 +5059,8 @@ function FrontDeskModal({
               </button>
             </div>
 
-            {/* Guest count + Duration + Cake in compact row */}
-            <div className="grid gap-3 sm:grid-cols-3">
+            {/* Guest count + Duration in compact row */}
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <span className="block text-xs text-stone-400 font-sans">
                   Guests
@@ -5277,31 +5185,6 @@ function FrontDeskModal({
                     ⚠️ Time is in the past
                   </div>
                 )}
-              </div>
-              <div className="space-y-1">
-                <span className="block text-xs text-stone-400 font-sans">
-                  Cake
-                </span>
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRoomDraft({ ...roomDraft, withCake: false })
-                    }
-                    className={`rounded-lg px-2 py-2 text-xs font-semibold transition ${!roomDraft.withCake ? "bg-amber-400 text-stone-950" : "bg-stone-800 text-stone-400 hover:bg-stone-700"}`}
-                  >
-                    🎂 No
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRoomDraft({ ...roomDraft, withCake: true })
-                    }
-                    className={`rounded-lg px-2 py-2 text-xs font-semibold transition ${roomDraft.withCake ? "bg-amber-400 text-stone-950" : "bg-stone-800 text-stone-400 hover:bg-stone-700"}`}
-                  >
-                    🍰 Yes
-                  </button>
-                </div>
               </div>
             </div>
 
@@ -5497,8 +5380,8 @@ function RoomEditor({
       : [];
   }, [room.minGroup, room.maxGroup]);
 
-  const tierLabel = (d: Duration, withCake: boolean) =>
-    `${d === "1.5" ? "1.5h" : `${d}h`} · ${withCake ? "🍰 with cake" : "🎂 no cake"}`;
+  const tierLabel = (d: Duration) =>
+    `${d === "1.5" ? "1.5h" : `${d}h`}`;
 
   const updateRate = (tierIdx: number, groupSize: number, value: number) => {
     setRoom((prev) => {
@@ -5681,7 +5564,7 @@ function RoomEditor({
                         key={i}
                         className="px-4 py-3 text-center text-xs font-semibold text-stone-400"
                       >
-                        <div>{tierLabel(tier.duration, tier.withCake)}</div>
+                        <div>{tierLabel(tier.duration)}</div>
                       </th>
                     ))}
                   </tr>

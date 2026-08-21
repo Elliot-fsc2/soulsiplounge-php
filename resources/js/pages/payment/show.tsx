@@ -103,7 +103,6 @@ export default function PaymentShow({ booking, bankAccounts }: Props) {
                         <div className="space-y-2.5 text-sm text-left">
                             <SummaryRow label="Room" value={booking.room_name} />
                             <SummaryRow label="Duration" value={booking.duration === '1.5' ? '1.5 Hours' : `${booking.duration} Hours`} />
-                            <SummaryRow label="Cake" value={booking.with_cake ? '🍰 Included' : '🎂 No cake'} />
                             <SummaryRow label="Guests" value={`${booking.guest_count} pax`} />
                             <SummaryRow label="Per person" value={formatCurrency(booking.per_person_price)} highlight />
                         </div>

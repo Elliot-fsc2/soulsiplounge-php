@@ -4,6 +4,7 @@ import { ActionButton, StatusPill, EmptyState, ListPanel, Field, Input, Textarea
 import { formatCurrency } from '@/lib/format';
 import { store, update, destroy } from '@/routes/admin/vouchers';
 import type { Voucher } from '@/types/domain';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface Props {
   vouchers: Voucher[];
@@ -21,6 +22,41 @@ export default function AdminVouchersIndex({ vouchers }: Props) {
   const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null);
   const [draft, setDraft] = useState<Voucher>(emptyDraft());
 
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    action: 'discard' | 'delete' | null;
+    voucher: Voucher | null;
+  }>({ isOpen: false, action: null, voucher: null });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const openConfirm = (action: 'discard' | 'delete', voucher: Voucher | null = null) => {
+    setConfirmState({ isOpen: true, action, voucher });
+  };
+  const closeConfirm = () => {
+    setConfirmState({ isOpen: false, action: null, voucher: null });
+  };
+
+  const executeAction = () => {
+    const { action, voucher } = confirmState;
+    if (!action) return;
+    
+    if (action === 'discard') {
+      setEditorOpen(false);
+      setDraft(emptyDraft());
+      setEditingVoucher(null);
+      closeConfirm();
+    } else if (action === 'delete' && voucher) {
+      setIsProcessing(true);
+      router.delete(destroy.url({ voucher: voucher.id }), { 
+        preserveScroll: true,
+        onFinish: () => {
+          setIsProcessing(false);
+          closeConfirm();
+        }
+      });
+    }
+  };
+
   const activeCount = vouchers.filter((v) => v.active).length;
   const totalRedemptions = vouchers.reduce((sum, v) => sum + v.used_count, 0);
 
@@ -36,11 +72,7 @@ export default function AdminVouchersIndex({ vouchers }: Props) {
   };
 
   const closeEditor = () => {
-    if (confirm('Discard changes?')) {
-      setEditorOpen(false);
-      setDraft(emptyDraft());
-      setEditingVoucher(null);
-    }
+    openConfirm('discard');
   };
 
   const saveVoucher = () => {
@@ -60,9 +92,7 @@ export default function AdminVouchersIndex({ vouchers }: Props) {
   };
 
   const deleteVoucher = (voucher: Voucher) => {
-    if (confirm(`Delete voucher "${voucher.code}"? This cannot be undone.`)) {
-      router.delete(destroy.url({ voucher: voucher.id }), { preserveScroll: true });
-    }
+    openConfirm('delete', voucher);
   };
 
   const toggleActive = (v: Voucher) => {
@@ -206,6 +236,24 @@ export default function AdminVouchersIndex({ vouchers }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={executeAction}
+        isLoading={isProcessing}
+        title={
+          confirmState.action === 'discard' ? 'Discard Changes' : 'Delete Voucher'
+        }
+        description={
+          confirmState.action === 'discard'
+            ? 'Are you sure you want to discard your unsaved changes?'
+            : `Are you sure you want to permanently delete the voucher "${confirmState.voucher?.code}"? This action cannot be undone.`
+        }
+        confirmText={
+          confirmState.action === 'discard' ? 'Yes, Discard' : 'Yes, Delete'
+        }
+      />
     </>
   );
 }

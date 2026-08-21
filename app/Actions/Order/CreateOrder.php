@@ -17,12 +17,62 @@ class CreateOrder
         private DeductStock $deductStock,
     ) {}
 
-    public function execute(User $user, array $items, ?string $bookingId = null, ?string $roomId = null, ?int $guestCount = null, ?string $notes = null): Order
+    public function execute(User $user, array $items, ?string $bookingId = null, ?string $roomId = null, ?int $guestCount = null, ?string $roomDuration = null, ?string $notes = null, array $rooms = []): Order
     {
-        return DB::transaction(function () use ($user, $items, $bookingId, $roomId, $guestCount, $notes) {
+        return DB::transaction(function () use ($user, $items, $bookingId, $roomId, $guestCount, $roomDuration, $notes, $rooms) {
             $orderNumber = $this->generateOrderNumber();
             $subtotal = 0;
             $orderItems = [];
+
+            if ($roomId && $guestCount && $roomDuration) {
+                $rooms[] = [
+                    'room_id' => $roomId,
+                    'guest_count' => $guestCount,
+                    'room_duration' => $roomDuration,
+                ];
+            }
+
+            foreach ($rooms as $roomData) {
+                $rId = $roomData['room_id'] ?? null;
+                $gCount = $roomData['guest_count'] ?? null;
+                $rDur = $roomData['room_duration'] ?? null;
+
+                if ($rId && $gCount && $rDur) {
+                    $room = \App\Models\Room::find($rId);
+                    if ($room) {
+                        $pricing = is_array($room->pricing) ? $room->pricing : json_decode($room->pricing, true);
+                        $tier = collect($pricing)->firstWhere('duration', $rDur);
+                        
+                        $pricePerPerson = 0;
+                        if ($tier) {
+                            if (isset($tier['per_person_rates'])) {
+                                if (isset($tier['per_person_rates'][$gCount])) {
+                                    $pricePerPerson = (int) $tier['per_person_rates'][$gCount];
+                                } else {
+                                    $sizes = array_map('intval', array_keys($tier['per_person_rates']));
+                                    rsort($sizes);
+                                    $pricePerPerson = (int) ($tier['per_person_rates'][$sizes[0]] ?? 0);
+                                }
+                            } else if (isset($tier['price_per_person'])) {
+                                $pricePerPerson = (int) $tier['price_per_person'];
+                            }
+                        }
+                        if ($pricePerPerson > 0) {
+                            $itemSubtotal = $pricePerPerson * $gCount;
+                            $subtotal += $itemSubtotal;
+                            
+                            $orderItems[] = [
+                                'product_id' => null,
+                                'product_name' => $room->name . ' (' . $rDur . ' hrs, ' . $gCount . ' pax)',
+                                'product_price' => $itemSubtotal,
+                                'quantity' => 1,
+                                'subtotal' => $itemSubtotal,
+                                'item_type' => OrderItemType::RoomCharge->value,
+                            ];
+                        }
+                    }
+                }
+            }
 
             foreach ($items as $item) {
                 $product = Product::findOrFail($item['product_id']);
@@ -48,14 +98,18 @@ class CreateOrder
                 }
             }
 
+            $primaryRoomId = !empty($rooms) ? $rooms[0]['room_id'] : null;
+            $primaryGuestCount = !empty($rooms) ? $rooms[0]['guest_count'] : null;
+
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'user_id' => $user->id,
                 'booking_id' => $bookingId,
-                'room_id' => $roomId,
-                'guest_count' => $guestCount,
+                'room_id' => $primaryRoomId,
+                'guest_count' => $primaryGuestCount,
                 'subtotal' => $subtotal,
                 'total' => $subtotal,
+                'payment_status' => 'pending',
                 'status' => OrderStatus::Active,
                 'notes' => $notes,
             ]);

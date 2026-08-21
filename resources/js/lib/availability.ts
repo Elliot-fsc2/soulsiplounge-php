@@ -75,9 +75,8 @@ export function isDateFullyBooked(
   date: string,
   roomName: string,
   bookings: Booking[],
+  durations: string[],
 ): boolean {
-  const durations = ['1.5', '2', '3'];
-
   for (const duration of durations) {
     const slots = generateAvailableSlots(date, roomName, duration, bookings);
     if (slots.length > 0) return false;
