@@ -44,6 +44,8 @@ class OrderController extends Controller
                 bookingId: $request->validated('booking_id'),
                 roomId: $request->validated('room_id'),
                 guestCount: $request->validated('guest_count'),
+                roomDuration: $request->validated('room_duration'),
+                rooms: $request->validated('rooms') ?? [],
                 notes: $request->validated('notes'),
             );
 

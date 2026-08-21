@@ -29,7 +29,7 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [date, setDate] = useState(todayStr());
-    const [duration, setDuration] = useState<Duration>('2');
+    const [duration, setDuration] = useState<string>('');
     const [guestCount, setGuestCount] = useState(3);
     const [time, setTime] = useState('');
     const [voucherCode, setVoucherCode] = useState('');
@@ -45,9 +45,19 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
 
     const selectedRoom = rooms.find((r) => r.id === roomId) || rooms[0];
     const resolvedRoomName = selectedRoom?.name || '';
+    
+    const roomDurations = useMemo(() => {
+        return selectedRoom?.pricing?.map(p => p.duration) || [];
+    }, [selectedRoom]);
+
+    useEffect(() => {
+        if (roomDurations.length > 0 && !roomDurations.includes(duration)) {
+            setDuration(roomDurations[0]);
+        }
+    }, [roomDurations, duration]);
 
     const perPerson = useMemo(() => {
-        if (!selectedRoom) return 0;
+        if (!selectedRoom || !duration) return 0;
         return computePerPersonRate(selectedRoom, duration, guestCount);
     }, [selectedRoom, duration, guestCount]);
 
@@ -207,13 +217,15 @@ export default function BookingCreate({ rooms, selectedRoomId, bookings = [], vo
                         <div className="space-y-3 border-t border-stone-800 pt-5">
                             <span className="block text-sm text-stone-300 font-medium">Session Duration</span>
                             <div className="grid grid-cols-3 gap-2">
-                                {(['1.5', '2', '3'] as Duration[]).map((d) => (
+                                {roomDurations.length > 0 ? roomDurations.map((d) => (
                                     <button key={d} type="button" onClick={() => { setDuration(d); setTime(''); }}
                                         className={`rounded-xl border py-3 text-xs font-semibold transition ${duration === d ? 'border-amber-400 bg-amber-400/10 text-amber-300' : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-amber-500/30 hover:text-stone-200'}`}
                                     >
                                         {d === '1.5' ? '1.5hr' : `${d}hr`}
                                     </button>
-                                ))}
+                                )) : (
+                                    <div className="col-span-3 text-stone-500 text-sm italic">No durations configured for this room.</div>
+                                )}
                             </div>
 
                             {date && availableSlots.length > 0 && (

@@ -3,23 +3,24 @@ import { router } from '@inertiajs/react';
 import { X } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import type { CartItem } from './CartPanel';
+import type { AssignedRoom } from '@/Pages/staff/pos';
 import { store } from '@/routes/staff/orders';
 
 interface Props {
   items: CartItem[];
-  roomId: string | null;
-  guestCount: number;
+  assignedRooms: AssignedRoom[];
   bookingId: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function CheckoutModal({ items, roomId, guestCount, bookingId, onClose, onSuccess }: Props) {
+export default function CheckoutModal({ items, assignedRooms, bookingId, onClose, onSuccess }: Props) {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountTendered, setAmountTendered] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const roomsTotal = assignedRooms.reduce((sum, r) => sum + r.price, 0);
+  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0) + roomsTotal;
   const tendered = parseFloat(amountTendered) || 0;
   const change = tendered - total;
   const isValid = paymentMethod === 'cash' ? tendered >= total : true;
@@ -36,8 +37,11 @@ export default function CheckoutModal({ items, roomId, guestCount, bookingId, on
       })),
       payment_method: paymentMethod,
       amount_tendered: paymentMethod === 'cash' ? Math.round(tendered * 100) : null,
-      room_id: roomId,
-      guest_count: guestCount > 0 ? guestCount : null,
+      rooms: assignedRooms.map((r) => ({
+        room_id: r.roomId,
+        guest_count: r.guestCount,
+        room_duration: r.duration,
+      })),
       booking_id: bookingId,
     }, {
       preserveScroll: true,
@@ -71,6 +75,14 @@ export default function CheckoutModal({ items, roomId, guestCount, bookingId, on
                   {item.name} <span className="text-stone-500">x{item.quantity}</span>
                 </span>
                 <span className="text-stone-100">{formatCurrency(item.price * item.quantity)}</span>
+              </div>
+            ))}
+            {assignedRooms.map((r) => (
+              <div key={r.id} className="flex items-center justify-between text-sm">
+                <span className="text-stone-300">
+                  {r.roomName} <span className="text-stone-500">({r.duration} hrs)</span>
+                </span>
+                <span className="text-stone-100">{formatCurrency(r.price)}</span>
               </div>
             ))}
           </div>

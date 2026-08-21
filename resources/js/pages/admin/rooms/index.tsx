@@ -6,12 +6,12 @@ import type { Room, RoomPricingTier } from '@/types/domain';
 import ConfirmModal from '@/components/confirm-modal';
 
 const DURATIONS = ['1.5', '2', '3'] as const;
-const GUEST_SIZES = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-function emptyPricing(): RoomPricingTier[] {
+function emptyPricing(min: number, max: number): RoomPricingTier[] {
+  const sizes = Array.from({ length: max - min + 1 }, (_, i) => min + i);
   return DURATIONS.map((duration) => ({
     duration,
-    per_person_rates: Object.fromEntries(GUEST_SIZES.map((g) => [g, 0])),
+    per_person_rates: Object.fromEntries(sizes.map((s) => [s, 0])),
   }));
 }
 
@@ -68,7 +68,7 @@ export default function AdminRoomsIndex({ rooms }: Props) {
       setEditingRoom(null);
       setDraft({
         id: '', name: '', image: '', description: '',
-        min_group: 3, max_group: 12, pricing: emptyPricing(),
+        min_group: 3, max_group: 12, pricing: emptyPricing(3, 12),
       });
     }
     setEditorOpen(true);
@@ -100,24 +100,57 @@ export default function AdminRoomsIndex({ rooms }: Props) {
     openConfirm('delete', room);
   };
 
-  const updateTierRate = (tierIdx: number, size: number, value: number) => {
+  const updateTierRate = (tierIdx: number, size: number, value: string) => {
     setDraft((prev) => {
       if (!prev) return prev;
       const next = [...prev.pricing];
-      next[tierIdx] = { ...next[tierIdx], per_person_rates: { ...next[tierIdx].per_person_rates, [size]: value } };
+      next[tierIdx] = { 
+        ...next[tierIdx], 
+        per_person_rates: { ...next[tierIdx].per_person_rates, [size]: value === '' ? ('' as unknown as number) : Number(value) } 
+      };
       return { ...prev, pricing: next };
     });
   };
 
+  const updateTierDuration = (tierIdx: number, duration: string) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const next = [...prev.pricing];
+      next[tierIdx] = { ...next[tierIdx], duration };
+      return { ...prev, pricing: next };
+    });
+  };
+
+  const addTier = () => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const sizes = Array.from({ length: prev.max_group - prev.min_group + 1 }, (_, i) => prev.min_group + i);
+      const newTier = { duration: '2', per_person_rates: Object.fromEntries(sizes.map((s) => [s, 0])) };
+      return { ...prev, pricing: [...prev.pricing, newTier] };
+    });
+  };
+
+  const removeTier = (tierIdx: number) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      return { ...prev, pricing: prev.pricing.filter((_, i) => i !== tierIdx) };
+    });
+  };
+
+  const guestSizes = draft ? Array.from(
+    { length: draft.max_group - draft.min_group + 1 }, 
+    (_, i) => draft.min_group + i
+  ) : [];
+
   return (
     <>
-      <Head title="Rooms CRUD - Soul Sips Lounge" />
+      <Head title="Rooms - Soul Sips Lounge" />
 
       <div className="w-full px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         <div className="rounded-2xl border border-stone-800 bg-stone-900 p-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-amber-500/80 font-sans">Rooms Management</p>
-            <h2 className="mt-1 text-2xl font-serif font-semibold text-stone-100">Rooms CRUD</h2>
+            <h2 className="mt-1 text-2xl font-serif font-semibold text-stone-100">Rooms</h2>
             <p className="mt-1 text-sm text-stone-400">Add, edit, or remove rooms. Each room has its own full pricing matrix.</p>
           </div>
           <ActionButton onClick={() => openEditor()}>+ Add Room</ActionButton>
@@ -138,7 +171,9 @@ export default function AdminRoomsIndex({ rooms }: Props) {
                   </div>
                   <div className="text-sm text-stone-300">
                     <div className="font-medium text-amber-300">{r.pricing?.length || 0} pricing tiers</div>
-                    <div className="text-stone-400 text-xs">1.5h / 2h / 3h</div>
+                    <div className="text-stone-400 text-xs">
+                      {r.pricing?.map(p => `${p.duration}h`).join(' / ') || 'No pricing setup'}
+                    </div>
                   </div>
                   <div className="text-xs text-stone-400 line-clamp-2">{r.description}</div>
                 </div>
@@ -201,35 +236,56 @@ export default function AdminRoomsIndex({ rooms }: Props) {
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <h4 className="text-base font-serif font-semibold text-stone-100">Pricing Matrix</h4>
-                  <p className="text-xs text-stone-500">Per-person rates in Philippine Pesos (₱).</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-base font-serif font-semibold text-stone-100">Pricing Matrix</h4>
+                    <p className="text-xs text-stone-500">Per-person rates in Philippine Pesos (₱).</p>
+                  </div>
+                  <ActionButton type="button" onClick={addTier} variant="ghost" className="text-xs py-1.5 px-3">
+                    + Add Tier
+                  </ActionButton>
                 </div>
                 <div className="overflow-x-auto rounded-2xl border border-stone-800 bg-stone-950/60">
-                  <table className="w-full min-w-[900px]">
+                  <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="border-b border-stone-800 bg-stone-900/80">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-stone-400">Duration</th>
-                        {GUEST_SIZES.map((s) => (
-                          <th key={s} className="px-2 py-3 text-center text-xs font-semibold text-stone-400">{s}</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-stone-400">Duration (hrs)</th>
+                        {guestSizes.map((s) => (
+                          <th key={s} className="px-2 py-3 text-center text-xs font-semibold text-stone-400">{s} pax</th>
                         ))}
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-stone-400">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {draft.pricing.map((tier, i) => (
                         <tr key={i} className="border-b border-stone-900 hover:bg-stone-900/40">
-                          <td className="px-4 py-2.5 text-sm font-bold text-stone-200">
-                            {tier.duration === '1.5' ? '1.5h' : `${tier.duration}h`}
+                          <td className="px-4 py-2.5">
+                            <input type="text" value={tier.duration}
+                              onChange={(e) => updateTierDuration(i, e.target.value)}
+                              placeholder="e.g. 2"
+                              className="w-20 rounded-lg border border-stone-700 bg-stone-950 px-3 py-1.5 text-sm font-bold text-stone-200 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20" />
                           </td>
-                          {GUEST_SIZES.map((s) => (
+                          {guestSizes.map((s) => (
                             <td key={s} className="px-1 py-1.5">
-                              <input type="number" value={tier.per_person_rates[s] ?? 0}
-                                onChange={(e) => updateTierRate(i, s, Number(e.target.value))}
-                                min={0} className="w-full rounded-lg border border-stone-700 bg-stone-950 px-2 py-1.5 text-right text-sm text-amber-300 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20" />
+                              <input type="number" value={tier.per_person_rates?.[s] ?? ''}
+                                onChange={(e) => updateTierRate(i, s, e.target.value)}
+                                min={0} className="w-full min-w-[60px] rounded-lg border border-stone-700 bg-stone-950 px-2 py-1.5 text-right text-sm text-amber-300 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20" />
                             </td>
                           ))}
+                          <td className="px-4 py-2.5 text-right">
+                            <button type="button" onClick={() => removeTier(i)}
+                              className="rounded-lg p-1.5 text-stone-500 hover:bg-rose-500/10 hover:text-rose-400 transition"
+                              title="Remove tier">✕</button>
+                          </td>
                         </tr>
                       ))}
+                      {draft.pricing.length === 0 && (
+                        <tr>
+                          <td colSpan={guestSizes.length + 2} className="px-4 py-6 text-center text-sm text-stone-500">
+                            No pricing tiers added. Click "+ Add Tier" to start.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

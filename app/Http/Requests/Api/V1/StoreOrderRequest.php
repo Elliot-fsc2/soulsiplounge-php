@@ -24,6 +24,11 @@ class StoreOrderRequest extends FormRequest
             'booking_id' => ['nullable', 'string', 'exists:bookings,id'],
             'room_id' => ['nullable', 'string', 'exists:rooms,id'],
             'guest_count' => ['nullable', 'integer', 'min:1'],
+            'room_duration' => ['nullable', 'string'],
+            'rooms' => ['nullable', 'array'],
+            'rooms.*.room_id' => ['required', 'string', 'exists:rooms,id'],
+            'rooms.*.guest_count' => ['required', 'integer', 'min:1'],
+            'rooms.*.room_duration' => ['required', 'string'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
     }

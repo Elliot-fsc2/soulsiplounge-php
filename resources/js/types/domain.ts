@@ -1,4 +1,4 @@
-export type Duration = '1.5' | '2' | '3';
+export type Duration = string;
 
 export interface RoomPricingTier {
   duration: Duration;

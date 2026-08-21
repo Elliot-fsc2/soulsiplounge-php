@@ -32,7 +32,7 @@ class OrderController
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'items' => 'required|array|min:1',
+            'items' => 'nullable|array',
             'items.*.product_id' => 'required|string|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'payment_method' => 'nullable|string|in:cash,gcash,card,bank_transfer',
@@ -40,16 +40,29 @@ class OrderController
             'booking_id' => 'nullable|string|exists:bookings,id',
             'room_id' => 'nullable|string|exists:rooms,id',
             'guest_count' => 'nullable|integer|min:1',
+            'room_duration' => 'nullable|string',
+            'rooms' => 'nullable|array',
+            'rooms.*.room_id' => 'required|string|exists:rooms,id',
+            'rooms.*.guest_count' => 'required|integer|min:1',
+            'rooms.*.room_duration' => 'required|string',
             'notes' => 'nullable|string|max:500',
         ]);
+
+        if (empty($validated['items']) && empty($validated['room_id']) && empty($validated['rooms'])) {
+            throw ValidationException::withMessages([
+                'items' => 'An order must contain at least one item or a room charge.',
+            ]);
+        }
 
         try {
             $order = $this->createOrder->execute(
                 user: $request->user(),
-                items: $validated['items'],
+                items: $validated['items'] ?? [],
                 bookingId: $validated['booking_id'] ?? null,
                 roomId: $validated['room_id'] ?? null,
                 guestCount: $validated['guest_count'] ?? null,
+                roomDuration: $validated['room_duration'] ?? null,
+                rooms: $validated['rooms'] ?? [],
                 notes: $validated['notes'] ?? null,
             );
 

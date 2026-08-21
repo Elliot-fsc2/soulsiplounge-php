@@ -18,7 +18,7 @@ class PosController
 
         $rooms = Room::orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'pricing']);
+            ->get(['id', 'name', 'pricing', 'min_group', 'max_group']);
 
         return Inertia::render('staff/pos', [
             'products' => $products,

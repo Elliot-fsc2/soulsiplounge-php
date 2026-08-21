@@ -21,27 +21,6 @@ class PosSeeder extends Seeder
     {
         $sort = 0;
 
-        // ── Room charges ──
-        Product::create([
-            'name' => 'Solo Room',
-            'category' => ProductCategory::Room,
-            'price' => 649,
-            'sort_order' => $sort += 10,
-        ]);
-
-        Product::create([
-            'name' => 'Duo Room',
-            'category' => ProductCategory::Room,
-            'price' => 649,
-            'sort_order' => $sort += 10,
-        ]);
-
-        Product::create([
-            'name' => 'Haven Room',
-            'category' => ProductCategory::Room,
-            'price' => 0,
-            'sort_order' => $sort += 10,
-        ]);
 
         // ── Beverages (all 207 pesos) ──
         $beverages = [
